@@ -1,13 +1,11 @@
--- PRODUCTION RLS POLICIES FIX
+-- PRODUCTION RLS POLICIES FIX (v2 - Fixed Realtime Issue)
 -- Run this in Supabase SQL Editor to ensure all policies are correct
 
 -- ============================================================================
 -- 1. PROJECTS TABLE POLICIES
 -- ============================================================================
 
-ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;
-
--- Drop existing policies
+-- Drop existing policies first
 DROP POLICY IF EXISTS "Users can view own projects" ON public.projects;
 DROP POLICY IF EXISTS "Users can create projects" ON public.projects;
 DROP POLICY IF EXISTS "Project creators and admins can update projects" ON public.projects;
@@ -59,8 +57,6 @@ CREATE POLICY "Project creators and admins can delete projects" ON public.projec
 -- 2. PROJECT_MEMBERS TABLE POLICIES
 -- ============================================================================
 
-ALTER TABLE public.project_members ENABLE ROW LEVEL SECURITY;
-
 -- Drop existing policies
 DROP POLICY IF EXISTS "Users can view project members" ON public.project_members;
 DROP POLICY IF EXISTS "Manage project members" ON public.project_members;
@@ -106,12 +102,9 @@ CREATE POLICY "Manage project members" ON public.project_members
 -- 3. USERS TABLE POLICIES
 -- ============================================================================
 
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-
 -- Drop existing policies
 DROP POLICY IF EXISTS "Users can view all users" ON public.users;
 DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
-DROP POLICY IF EXISTS "Allow user profile creation" ON public.users;
 
 -- Allow all authenticated users to view all users (for member search)
 CREATE POLICY "Users can view all users" ON public.users
@@ -121,15 +114,9 @@ CREATE POLICY "Users can view all users" ON public.users
 CREATE POLICY "Users can update own profile" ON public.users
   FOR UPDATE USING (auth.uid() = id);
 
--- Allow user profile creation (for trigger)
-CREATE POLICY "Allow user profile creation" ON public.users
-  FOR ALL USING (true) WITH CHECK (true);
-
 -- ============================================================================
 -- 4. TASKS TABLE POLICIES
 -- ============================================================================
-
-ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies
 DROP POLICY IF EXISTS "Project members can view tasks" ON public.tasks;
@@ -181,8 +168,6 @@ CREATE POLICY "Project members can delete tasks" ON public.tasks
 -- 5. FILES TABLE POLICIES
 -- ============================================================================
 
-ALTER TABLE public.files ENABLE ROW LEVEL SECURITY;
-
 -- Drop existing policies
 DROP POLICY IF EXISTS "Project members can view files" ON public.files;
 DROP POLICY IF EXISTS "Project members can upload files" ON public.files;
@@ -213,15 +198,6 @@ CREATE POLICY "File uploader can delete" ON public.files
   FOR DELETE USING (auth.uid() = uploaded_by);
 
 -- ============================================================================
--- 6. ENABLE REALTIME
--- ============================================================================
-
-ALTER PUBLICATION supabase_realtime ADD TABLE public.projects;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.project_members;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.tasks;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.files;
-
--- ============================================================================
 -- VERIFICATION QUERIES
 -- ============================================================================
 
@@ -232,7 +208,7 @@ WHERE schemaname = 'public'
 AND tablename IN ('projects', 'project_members', 'users', 'tasks', 'files');
 
 -- List all policies
-SELECT schemaname, tablename, policyname, permissive, roles, cmd, qual 
+SELECT schemaname, tablename, policyname, permissive, roles, cmd 
 FROM pg_policies 
 WHERE schemaname = 'public'
 ORDER BY tablename, policyname;
