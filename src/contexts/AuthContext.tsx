@@ -21,45 +21,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchUserProfile = async (userId: string, retries = 3, delay = 1000): Promise<User | null> => {
-    console.log(`[AuthContext] Fetching user profile for ${userId}, retries left: ${retries}`);
+  const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
-      console.log(`[AuthContext] About to call supabase.from('users').select...`);
-
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Supabase query timeout after 10s')), 10000)
-      );
-
-      const queryPromise = supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
 
-      const result = await Promise.race([queryPromise, timeoutPromise]) as any;
-      const { data, error } = result;
-
-      console.log(`[AuthContext] Supabase call completed. Data:`, data, 'Error:', error);
-
       if (error) {
-        console.error(`[AuthContext] Error fetching profile:`, error);
-        if (retries > 0) {
-          console.log(`[AuthContext] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return fetchUserProfile(userId, retries - 1, delay * 1.5);
-        }
-        throw error;
+        console.error('[AuthContext] Error fetching profile:', error);
+        return null;
       }
-      console.log(`[AuthContext] Profile fetched successfully:`, data);
+
       return data as User;
     } catch (error) {
       console.error('[AuthContext] Error fetching user profile:', error);
-      if (retries > 0 && error instanceof Error && error.message.includes('timeout')) {
-        console.log(`[AuthContext] Timeout occurred, retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchUserProfile(userId, retries - 1, delay * 1.5);
-      }
       return null;
     }
   };
@@ -69,22 +46,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const initAuth = async () => {
       try {
+        console.log('[AuthContext] Initializing auth...');
         const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+
+        if (error) {
+          console.error('[AuthContext] Error getting session:', error);
+          throw error;
+        }
+
+        console.log('[AuthContext] Session retrieved:', session ? 'exists' : 'null');
 
         if (mounted) {
           setSession(session);
+
           if (session?.user) {
+            console.log('[AuthContext] Fetching user profile...');
             const profile = await fetchUserProfile(session.user.id);
-            if (mounted) {
+            if (mounted && profile) {
+              console.log('[AuthContext] Profile loaded successfully');
               setUser(profile);
+            } else if (mounted && !profile) {
+              console.warn('[AuthContext] Profile not found, but session exists');
+              // Keep session but set user to null - will trigger profile creation on next action
+              setUser(null);
             }
+          } else {
+            console.log('[AuthContext] No session found');
           }
         }
       } catch (error) {
-        console.error('Error initializing auth:', error);
+        console.error('[AuthContext] Error initializing auth:', error);
       } finally {
         if (mounted) {
+          console.log('[AuthContext] Auth initialization complete, setting isLoading to false');
           setIsLoading(false);
         }
       }
@@ -94,10 +88,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
+      console.log('[AuthContext] Auth state changed:', event);
       setSession(session);
+
       if (session?.user) {
         const profile = await fetchUserProfile(session.user.id);
         if (mounted) {
@@ -108,6 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
         }
       }
+
       if (mounted) {
         setIsLoading(false);
       }
