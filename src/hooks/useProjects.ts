@@ -110,10 +110,16 @@ export const useProjects = () => {
     problem_statement?: string;
     solution_approach?: string;
   }) => {
-    if (!user) throw new Error('User not authenticated');
+    if (!user) {
+      console.error('[createProject] User not authenticated');
+      throw new Error('User not authenticated');
+    }
+
+    console.log('[createProject] Starting project creation:', { projectName: projectData.name, userId: user.id });
 
     try {
       // Create the project
+      console.log('[createProject] Step 1: Creating project in database...');
       const { data: project, error: projectError } = await supabase
         .from('projects')
         .insert([
@@ -125,9 +131,15 @@ export const useProjects = () => {
         .select()
         .single();
 
-      if (projectError) throw projectError;
+      if (projectError) {
+        console.error('[createProject] Project creation failed:', projectError);
+        throw projectError;
+      }
+
+      console.log('[createProject] Step 1 SUCCESS: Project created with ID:', project.id);
 
       // Add creator as admin
+      console.log('[createProject] Step 2: Adding creator as admin...');
       const { error: memberError } = await supabase
         .from('project_members')
         .insert([
@@ -138,10 +150,18 @@ export const useProjects = () => {
           },
         ]);
 
-      if (memberError) throw memberError;
+      if (memberError) {
+        console.error('[createProject] Adding member failed:', memberError);
+        throw memberError;
+      }
+
+      console.log('[createProject] Step 2 SUCCESS: Creator added as admin');
 
       // Refresh projects list
+      console.log('[createProject] Step 3: Refreshing projects list...');
       await fetchProjects();
+
+      console.log('[createProject] SUCCESS: Project creation complete!');
 
       toast({
         title: 'Success',
@@ -149,12 +169,19 @@ export const useProjects = () => {
       });
 
       return project;
-    } catch (err) {
-      console.error('Error creating project:', err);
+    } catch (err: any) {
+      console.error('[createProject] ERROR:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint,
+        fullError: err
+      });
+
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to create project. Please try again.',
+        description: err.message || 'Failed to create project. Please try again.',
       });
       throw err;
     }
