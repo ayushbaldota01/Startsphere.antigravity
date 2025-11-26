@@ -21,15 +21,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const fetchUserProfile = async (userId: string): Promise<User | null> => {
-    try {
-      console.log('[AuthContext] Fetching profile for user ID:', userId);
+  const fetchUserProfile = async (userId: string, retryCount = 0): Promise<User | null> => {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 1000; // 1 second base delay
 
-      const { data, error } = await supabase
+    try {
+      console.log(`[AuthContext] Fetching profile for user ID: ${userId} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
+      );
+
+      const fetchPromise = supabase
         .from('users')
         .select('*')
         .eq('id', userId)
         .single();
+
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (error) {
         console.error('[AuthContext] Error fetching profile:', {
@@ -38,6 +48,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           hint: error.hint,
           code: error.code,
         });
+
+        // Retry on certain errors
+        if (retryCount < MAX_RETRIES && (error.code === 'PGRST116' || error.message.includes('timeout'))) {
+          const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
+          console.log(`[AuthContext] Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchUserProfile(userId, retryCount + 1);
+        }
+
         return null;
       }
 
@@ -54,8 +73,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       });
 
       return data as User;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[AuthContext] Exception while fetching user profile:', error);
+
+      // Retry on network errors or timeouts
+      if (retryCount < MAX_RETRIES && (error.message.includes('timeout') || error.message.includes('network'))) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount);
+        console.log(`[AuthContext] Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return fetchUserProfile(userId, retryCount + 1);
+      }
+
       return null;
     }
   };
