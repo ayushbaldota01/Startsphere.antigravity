@@ -23,6 +23,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchUserProfile = async (userId: string): Promise<User | null> => {
     try {
+      console.log('[AuthContext] Fetching profile for user ID:', userId);
+
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -30,13 +32,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         .single();
 
       if (error) {
-        console.error('[AuthContext] Error fetching profile:', error);
+        console.error('[AuthContext] Error fetching profile:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
         return null;
       }
 
+      if (!data) {
+        console.warn('[AuthContext] No profile data returned for user:', userId);
+        return null;
+      }
+
+      console.log('[AuthContext] Profile fetched successfully:', {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        role: data.role,
+      });
+
       return data as User;
     } catch (error) {
-      console.error('[AuthContext] Error fetching user profile:', error);
+      console.error('[AuthContext] Exception while fetching user profile:', error);
       return null;
     }
   };

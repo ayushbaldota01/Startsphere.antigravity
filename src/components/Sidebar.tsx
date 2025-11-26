@@ -27,8 +27,16 @@ export const Sidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
 
+  // Debug logging
+  console.log('[Sidebar] User state:', {
+    hasUser: !!user,
+    userId: user?.id,
+    userName: user?.name,
+    userRole: user?.role,
+  });
+
   const { projects: userProjects } = useProjects();
-  
+
   // Map projects with colors
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500'];
   const projects = userProjects.map((project, index) => ({
@@ -107,7 +115,7 @@ export const Sidebar = () => {
                       projects.map((project) => (
                         <SidebarMenuItem key={project.id}>
                           <SidebarMenuButton asChild isActive={isActive(`/project/${project.id}`)}>
-                            <NavLink 
+                            <NavLink
                               to={`/project/${project.id}`}
                               activeClassName="bg-accent text-accent-foreground font-medium"
                             >
@@ -141,14 +149,18 @@ export const Sidebar = () => {
                 </div>
                 {!collapsed && (
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.name}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
+                    <p className="text-sm font-medium truncate">
+                      {user?.name || 'Loading...'}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user?.role || 'User'}
+                    </p>
                   </div>
                 )}
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
-          
+
           {!collapsed && (
             <SidebarMenuItem>
               <SidebarMenuButton onClick={logout}>
