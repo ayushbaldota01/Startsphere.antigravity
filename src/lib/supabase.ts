@@ -12,6 +12,9 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: true,
+    storage: window.localStorage, // Explicitly use localStorage for session persistence
+    storageKey: 'startsphere-auth', // Custom storage key for better organization
+    flowType: 'pkce', // Use PKCE flow for better security
   },
 });
 
