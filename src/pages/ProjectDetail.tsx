@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
+import { TeamWorkspace } from '@/components/workspace/TeamWorkspace';
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -154,14 +155,19 @@ const ProjectDetail = () => {
         </header>
 
         <main className="flex-1 p-6 bg-background overflow-y-auto">
-          <Tabs defaultValue="overview" className="space-y-4">
+          <Tabs defaultValue="workspace" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="workspace">Team Workspace</TabsTrigger>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Work Table</TabsTrigger>
               <TabsTrigger value="chat">Conference Room</TabsTrigger>
               <TabsTrigger value="notes">Scratch Pad</TabsTrigger>
               <TabsTrigger value="files">File Shelf</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="workspace" className="h-[calc(100vh-12rem)]">
+              <TeamWorkspace projectId={id!} />
+            </TabsContent>
 
             <TabsContent value="overview">
               <OfficeOverview
