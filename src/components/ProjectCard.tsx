@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
 
 interface ProjectCardProps {
   id: string;
@@ -18,7 +17,6 @@ interface ProjectCardProps {
 
 export const ProjectCard = ({ id, title, description, progress, dueDate, members, status }: ProjectCardProps) => {
   const navigate = useNavigate();
-  const [isHovered, setIsHovered] = useState(false);
 
   const statusColors = {
     active: 'bg-blue-500 text-white',
@@ -68,14 +66,10 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
             </div>
           </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -10 }}
-            className="flex items-center gap-2 text-primary font-medium text-sm"
-          >
+          <div className="flex items-center gap-2 text-primary font-medium text-sm mt-4">
             <span>Open Project</span>
             <ArrowRight className="w-4 h-4" />
-          </motion.div>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
