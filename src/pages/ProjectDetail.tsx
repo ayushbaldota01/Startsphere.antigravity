@@ -113,7 +113,7 @@ const ProjectDetail = () => {
         </header>
 
         <main className="flex-1 p-6 bg-background overflow-y-auto">
-          <Tabs defaultValue="workspace" className="space-y-4">
+          <Tabs defaultValue="overview" className="space-y-4">
             <TabsList>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Work Table</TabsTrigger>

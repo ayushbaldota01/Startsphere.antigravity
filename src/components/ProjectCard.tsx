@@ -27,18 +27,13 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
   };
 
   return (
-    <motion.div
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      onHoverStart={() => setIsHovered(true)}
-      onHoverEnd={() => setIsHovered(false)}
-    >
-      <Card 
+    <motion.div>
+      <Card
         className="h-full cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-xl overflow-hidden group"
         onClick={() => navigate(`/project/${id}`)}
       >
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-        
+
         <CardHeader className="relative">
           <div className="flex items-start justify-between mb-2">
             <CardTitle className="text-xl font-bold group-hover:text-primary transition-colors">
@@ -52,7 +47,7 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
             {description}
           </CardDescription>
         </CardHeader>
-        
+
         <CardContent className="space-y-4 relative">
           <div>
             <div className="flex justify-between text-sm mb-2">
@@ -61,7 +56,7 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
             </div>
             <Progress value={progress} className="h-2.5" />
           </div>
-          
+
           <div className="flex items-center justify-between text-sm pt-2 border-t">
             <div className="flex items-center gap-1.5 text-muted-foreground">
               <Calendar className="w-4 h-4" />
