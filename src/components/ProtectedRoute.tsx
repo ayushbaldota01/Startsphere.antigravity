@@ -25,10 +25,6 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     return <Navigate to="/login" replace />;
   }
 
-  // If session exists but user profile is missing (and not loading), we might have a data consistency issue
-  // But we shouldn't block access if we have a session, just maybe show a warning or degraded state
-  // The AuthContext will try to fetch the profile in the background
-
   // Session exists - allow access immediately
   // Profile loading happens in background and doesn't block rendering
   // Components will use cached profile or show loading states for profile-dependent content

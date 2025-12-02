@@ -94,124 +94,165 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
 
-    try {
-      console.log('[AuthContext] Fetching profile from database');
+    const fetchWithRetry = async (retries = 3, delay = 1000): Promise<User | null> => {
+      try {
+        console.log(`[AuthContext] Fetching profile from database (attempts left: ${retries})`);
 
-      // Use AbortController for timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', userId)
-        .single()
-        .abortSignal(controller.signal as any);
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', userId)
+          .single()
+          .abortSignal(controller.signal as any);
 
-      clearTimeout(timeoutId);
+        clearTimeout(timeoutId);
 
-      if (error) {
-        console.error('[AuthContext] Error fetching profile:', error.message);
+        if (error) {
+          console.error('[AuthContext] Error fetching profile:', error.message);
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return fetchWithRetry(retries - 1, delay * 1.5);
+          }
+          return null;
+        }
+
+        if (data) {
+          // Cache the profile
+          setCachedProfile(data as User);
+          console.log('[AuthContext] Profile fetched and cached');
+          return data as User;
+        }
+
+        return null;
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.warn('[AuthContext] Profile fetch timed out');
+        } else {
+          console.error('[AuthContext] Exception fetching profile:', error);
+        }
+
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          return fetchWithRetry(retries - 1, delay * 1.5);
+        }
         return null;
       }
+    };
 
-      if (data) {
-        // Cache the profile
-        setCachedProfile(data as User);
-        console.log('[AuthContext] Profile fetched and cached');
-        return data as User;
-      }
-
-      return null;
-    } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.warn('[AuthContext] Profile fetch timed out');
-      } else {
-        console.error('[AuthContext] Exception fetching profile:', error);
-      }
-    }
+    return fetchWithRetry();
   }, []);
 
   // Initialize auth
   useEffect(() => {
     let mounted = true;
+    let initLock = false;
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const handleSession = async (currentSession: Session | null) => {
       if (!mounted) return;
 
-      console.log('[AuthContext] Auth state changed:', event);
+      try {
+        if (currentSession?.user) {
+          setSession(currentSession);
 
-      // Update session immediately
-      setSession(session);
+          // Try cache first for instant load
+          const cachedUser = getCachedProfile(currentSession.user.id);
+          if (cachedUser) {
+            console.log('[AuthContext] Using cached profile for instant load');
+            setUser(cachedUser);
+            setIsLoading(false); // Show UI immediately with cached data
 
-      if (event === 'SIGNED_OUT') {
-        clearCachedProfile();
-        setUser(null);
+            // Refresh in background
+            setIsProfileLoading(true);
+            const freshProfile = await fetchUserProfile(currentSession.user.id, false);
+            if (mounted && freshProfile) {
+              setUser(freshProfile);
+            }
+            if (mounted) setIsProfileLoading(false);
+          } else {
+            // No cache - blocking load
+            setIsProfileLoading(true);
+            const profile = await fetchUserProfile(currentSession.user.id, false);
+
+            if (mounted) {
+              if (profile) {
+                setUser(profile);
+              } else {
+                // Session exists but profile fetch failed after retries
+                console.error('[AuthContext] Critical: Session exists but profile missing');
+                // Don't logout automatically to avoid loops, but maybe show error?
+                // For now, keep user null so UI handles it (or shows "User")
+                // But we must stop loading
+              }
+              setIsProfileLoading(false);
+              setIsLoading(false);
+            }
+          }
+        } else {
+          // No session
+          setSession(null);
+          setUser(null);
+          clearCachedProfile();
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('[AuthContext] Error handling session:', error);
+        if (mounted) setIsLoading(false);
+      }
+    };
+
+    // Initial check
+    const init = async () => {
+      if (initLock) return;
+      initLock = true;
+
+      console.log('[AuthContext] Initializing...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+
+      if (error) {
+        console.error('[AuthContext] Error getting session:', error);
         setIsLoading(false);
         return;
       }
 
-      // If we have a session and no user, or if the user ID changed, fetch profile
-      if (session?.user) {
-        // If we already have the correct user loaded, don't re-fetch unless it's a specific event
-        if (user && user.id === session.user.id && event !== 'USER_UPDATED') {
-          // We're good, just ensure loading is false
-          setIsLoading(false);
-          return;
-        }
+      await handleSession(session);
+    };
 
-        // Try cache first
-        const cachedUser = getCachedProfile(session.user.id);
-        if (cachedUser) {
-          setUser(cachedUser);
-          // If we have cache, we can stop global loading immediately
-          setIsLoading(false);
+    init();
 
-          // Background refresh
-          setIsProfileLoading(true);
-          fetchUserProfile(session.user.id, false).then((freshProfile) => {
-            if (mounted) {
-              if (freshProfile) setUser(freshProfile);
-              setIsProfileLoading(false);
-            }
-          });
-        } else {
-          // No cache - fetch profile
-          // Only block global loading if we don't have a user yet
-          if (!user) setIsLoading(true);
-          setIsProfileLoading(true);
+    // Listen for changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[AuthContext] Auth state changed:', event);
 
-          const profile = await fetchUserProfile(session.user.id, false);
-          if (mounted) {
-            if (profile) setUser(profile);
-            setIsProfileLoading(false);
-            setIsLoading(false);
-          }
-        }
-      } else {
-        // No session
+      if (event === 'INITIAL_SESSION') {
+        // Handled by init(), but if init() missed it or race condition, handle here?
+        // Usually getSession covers this.
+        return;
+      }
+
+      if (event === 'SIGNED_OUT') {
+        setSession(null);
         setUser(null);
+        clearCachedProfile();
         setIsLoading(false);
+        return;
+      }
+
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        await handleSession(session);
       }
     });
 
-    // Safety timeout to prevent infinite loading state
-    const safetyTimeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn('[AuthContext] Safety timeout triggered - forcing loading to false');
-        setIsLoading(false);
-      }
-    }, 5000);
-
     return () => {
       mounted = false;
-      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile, user, isLoading]);
+  }, [fetchUserProfile]);
 
   const login = async (email: string, password: string) => {
     try {
