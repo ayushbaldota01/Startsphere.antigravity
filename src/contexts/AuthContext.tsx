@@ -129,69 +129,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         console.error('[AuthContext] Exception fetching profile:', error);
       }
-      return null;
     }
   }, []);
 
-  // Initialize auth - fast path using session and cache
+  // Initialize auth
   useEffect(() => {
     let mounted = true;
-
-    const initAuth = async () => {
-      try {
-        console.log('[AuthContext] Initializing auth...');
-
-        // Get session first (fast - from localStorage)
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('[AuthContext] Error getting session:', error);
-          if (mounted) setIsLoading(false);
-          return;
-        }
-
-        if (mounted) {
-          setSession(session);
-
-          if (session?.user) {
-            // Try cache first for instant load
-            const cachedUser = getCachedProfile(session.user.id);
-            if (cachedUser) {
-              console.log('[AuthContext] Using cached profile for instant load');
-              setUser(cachedUser);
-              setIsLoading(false);
-
-              // Refresh profile in background (non-blocking)
-              setIsProfileLoading(true);
-              fetchUserProfile(session.user.id, false).then((freshProfile) => {
-                if (mounted && freshProfile) {
-                  setUser(freshProfile);
-                }
-                if (mounted) setIsProfileLoading(false);
-              });
-            } else {
-              // No cache - fetch profile (blocking to ensure user data is present)
-              setIsProfileLoading(true);
-
-              const profile = await fetchUserProfile(session.user.id);
-              if (mounted) {
-                setUser(profile);
-                setIsProfileLoading(false);
-                setIsLoading(false);
-              }
-            }
-          } else {
-            console.log('[AuthContext] No session found');
-            setIsLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('[AuthContext] Error initializing auth:', error);
-        if (mounted) setIsLoading(false);
-      }
-    };
-
-    initAuth();
 
     // Listen for auth changes
     const {
@@ -200,6 +143,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!mounted) return;
 
       console.log('[AuthContext] Auth state changed:', event);
+
+      // Update session immediately
       setSession(session);
 
       if (event === 'SIGNED_OUT') {
@@ -209,32 +154,64 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      // If we have a session and no user, or if the user ID changed, fetch profile
       if (session?.user) {
+        // If we already have the correct user loaded, don't re-fetch unless it's a specific event
+        if (user && user.id === session.user.id && event !== 'USER_UPDATED') {
+          // We're good, just ensure loading is false
+          setIsLoading(false);
+          return;
+        }
+
         // Try cache first
         const cachedUser = getCachedProfile(session.user.id);
         if (cachedUser) {
           setUser(cachedUser);
-        }
+          // If we have cache, we can stop global loading immediately
+          setIsLoading(false);
 
-        // Fetch fresh profile
-        setIsProfileLoading(true);
-        const profile = await fetchUserProfile(session.user.id, false);
-        if (mounted) {
-          if (profile) setUser(profile);
-          setIsProfileLoading(false);
+          // Background refresh
+          setIsProfileLoading(true);
+          fetchUserProfile(session.user.id, false).then((freshProfile) => {
+            if (mounted) {
+              if (freshProfile) setUser(freshProfile);
+              setIsProfileLoading(false);
+            }
+          });
+        } else {
+          // No cache - fetch profile
+          // Only block global loading if we don't have a user yet
+          if (!user) setIsLoading(true);
+          setIsProfileLoading(true);
+
+          const profile = await fetchUserProfile(session.user.id, false);
+          if (mounted) {
+            if (profile) setUser(profile);
+            setIsProfileLoading(false);
+            setIsLoading(false);
+          }
         }
       } else {
+        // No session
         setUser(null);
+        setIsLoading(false);
       }
-
-      if (mounted) setIsLoading(false);
     });
+
+    // Safety timeout to prevent infinite loading state
+    const safetyTimeout = setTimeout(() => {
+      if (isLoading) {
+        console.warn('[AuthContext] Safety timeout triggered - forcing loading to false');
+        setIsLoading(false);
+      }
+    }, 5000);
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, user, isLoading]);
 
   const login = async (email: string, password: string) => {
     try {

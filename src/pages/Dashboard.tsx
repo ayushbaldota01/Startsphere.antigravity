@@ -38,7 +38,7 @@ const Dashboard = () => {
           >
             <div className="flex items-center gap-2 mb-2">
               <h3 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-                Welcome back, {user?.name}!
+                Welcome back{user?.name ? `, ${user.name}` : ''}!
               </h3>
               <Sparkles className="w-6 h-6 text-primary animate-pulse" />
             </div>
@@ -117,7 +117,7 @@ const Dashboard = () => {
             </motion.div>
           )}
         </main>
-      </div>
+      </div >
     </>
   );
 };
