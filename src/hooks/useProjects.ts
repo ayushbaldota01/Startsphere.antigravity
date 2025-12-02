@@ -11,48 +11,143 @@ export interface ProjectWithRole extends Project {
   memberCount?: number;
 }
 
-// Fetch projects using the optimized RPC function
-const fetchUserProjects = async (userId: string): Promise<ProjectWithRole[]> => {
-  const { data, error } = await supabase.rpc('get_user_projects', {
-    user_uuid: userId,
-  });
+// Fallback: Fetch projects using standard Supabase queries
+const fetchUserProjectsFallback = async (userId: string): Promise<ProjectWithRole[]> => {
+  // 1. Get project memberships
+  const { data: memberships, error: memberError } = await supabase
+    .from('project_members')
+    .select('role, project_id, projects(*)')
+    .eq('user_id', userId);
 
-  if (error) {
-    console.error('Error fetching projects:', error);
-    throw error;
-  }
+  if (memberError) throw memberError;
 
-  return (data || []).map((project: Project & { member_count: number }) => ({
-    ...project,
-    memberCount: project.member_count,
-  }));
+  if (!memberships) return [];
+
+  // 2. For each project, get member count (this is N+1 but necessary for fallback)
+  const projectsWithCounts = await Promise.all(
+    memberships.map(async (m) => {
+      const project = m.projects as unknown as Project;
+      const { count } = await supabase
+        .from('project_members')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', project.id);
+
+      return {
+        ...project,
+        role: m.role,
+        memberCount: count || 0,
+        member_count: count || 0,
+      };
+    })
+  );
+
+  return projectsWithCounts;
 };
 
-// Fetch single project detail using RPC
+// Fetch projects using the optimized RPC function with fallback
+const fetchUserProjects = async (userId: string): Promise<ProjectWithRole[]> => {
+  try {
+    const { data, error } = await supabase.rpc('get_user_projects', {
+      user_uuid: userId,
+    });
+
+    if (error) throw error;
+
+    return (data || []).map((project: Project & { member_count: number }) => ({
+      ...project,
+      memberCount: project.member_count,
+    }));
+  } catch (error) {
+    console.warn('RPC get_user_projects failed, using fallback:', error);
+    return fetchUserProjectsFallback(userId);
+  }
+};
+
+// Fallback: Fetch project detail using standard Supabase queries
+const fetchProjectDetailFallback = async (
+  projectId: string,
+  userId: string
+): Promise<ProjectWithRole | null> => {
+  // 1. Check access and get role
+  const { data: membership, error: memberError } = await supabase
+    .from('project_members')
+    .select('role')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .single();
+
+  if (memberError || !membership) return null;
+
+  // 2. Get project details
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .single();
+
+  if (projectError || !project) return null;
+
+  // 3. Get members
+  const { data: members } = await supabase
+    .from('project_members')
+    .select('*, users(id, name, email, avatar_url, role)')
+    .eq('project_id', projectId);
+
+  const formattedMembers = members?.map((m: any) => ({
+    id: m.users.id,
+    name: m.users.name,
+    email: m.users.email,
+    avatar_url: m.users.avatar_url,
+    role: m.role, // Project role
+    joined_at: m.joined_at
+  })) || [];
+
+  // 4. Get task stats
+  const { count: total } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId);
+  const { count: todo } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'TODO');
+  const { count: inProgress } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'IN_PROGRESS');
+  const { count: done } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'DONE');
+
+  return {
+    ...project,
+    role: membership.role,
+    members: formattedMembers,
+    taskStats: {
+      total: total || 0,
+      todo: todo || 0,
+      in_progress: inProgress || 0,
+      done: done || 0
+    }
+  } as unknown as ProjectWithRole;
+};
+
+// Fetch single project detail using RPC with fallback
 const fetchProjectDetail = async (
   projectId: string,
   userId: string
 ): Promise<ProjectWithRole | null> => {
-  const { data, error } = await supabase.rpc('get_project_detail', {
-    project_uuid: projectId,
-    user_uuid: userId,
-  });
+  try {
+    const { data, error } = await supabase.rpc('get_project_detail', {
+      project_uuid: projectId,
+      user_uuid: userId,
+    });
 
-  if (error) {
-    console.error('Error fetching project detail:', error);
-    throw error;
+    if (error) throw error;
+
+    if (!data || !data.project) {
+      return null;
+    }
+
+    return {
+      ...data.project,
+      role: data.user_role,
+      members: data.members,
+      taskStats: data.task_stats,
+    } as ProjectWithRole;
+  } catch (error) {
+    console.warn('RPC get_project_detail failed, using fallback:', error);
+    return fetchProjectDetailFallback(projectId, userId);
   }
-
-  if (!data || !data.project) {
-    return null;
-  }
-
-  return {
-    ...data.project,
-    role: data.user_role,
-    members: data.members,
-    taskStats: data.task_stats,
-  } as ProjectWithRole;
 };
 
 export const useProjects = () => {
@@ -439,13 +534,7 @@ export const useProjectDetail = (projectId: string | undefined) => {
     queryFn: async () => {
       if (!projectId || !user?.id) return null;
 
-      const { data, error } = await supabase.rpc('get_project_detail', {
-        project_uuid: projectId,
-        user_uuid: user.id,
-      });
-
-      if (error) throw error;
-      return data;
+      return fetchProjectDetail(projectId, user.id);
     },
     enabled: !!projectId && !!user?.id,
     staleTime: 60 * 1000, // 1 minute
@@ -493,10 +582,10 @@ export const useProjectDetail = (projectId: string | undefined) => {
   }, [projectId, queryClient]);
 
   return {
-    project: query.data?.project || null,
+    project: query.data || null,
     members: query.data?.members || [],
-    userRole: query.data?.user_role,
-    taskStats: query.data?.task_stats,
+    userRole: query.data?.role,
+    taskStats: query.data?.taskStats,
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
