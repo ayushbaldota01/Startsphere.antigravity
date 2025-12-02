@@ -2,11 +2,13 @@ import { Sidebar } from '@/components/Sidebar';
 import { ProjectCard } from '@/components/ProjectCard';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { CreateProjectDialog } from '@/components/CreateProjectDialog';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProjects } from '@/hooks/useProjects';
-import { Skeleton } from '@/components/ui/skeleton';
+import { SkeletonProjectGrid } from '@/components/ui/skeleton-card';
 import { Card, CardContent } from '@/components/ui/card';
-import { FolderOpen } from 'lucide-react';
+import { FolderOpen, Sparkles } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -16,63 +18,103 @@ const Dashboard = () => {
     <>
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <header className="h-14 flex items-center border-b px-4 gap-2">
+        <motion.header
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="h-14 flex items-center border-b px-4 gap-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+        >
           <SidebarTrigger />
           <div className="flex-1" />
+          <ThemeToggle />
           {user?.role === 'student' && <CreateProjectDialog />}
-        </header>
-        
-        <main className="flex-1 p-6 bg-background overflow-y-auto">
-          <div className="mb-6">
-            <h3 className="text-2xl font-bold mb-1">
-              Welcome back, {user?.name}! 👋
-            </h3>
-            <p className="text-muted-foreground">
+        </motion.header>
+
+        <main className="flex-1 p-6 bg-gradient-to-br from-background via-background to-muted/10 overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+                Welcome back, {user?.name}!
+              </h3>
+              <Sparkles className="w-6 h-6 text-primary animate-pulse" />
+            </div>
+            <p className="text-muted-foreground text-lg">
               Here's what's happening with your projects today.
             </p>
-          </div>
+          </motion.div>
 
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1, 2, 3].map((i) => (
-                <Card key={i}>
-                  <CardContent className="p-6 space-y-4">
-                    <Skeleton className="h-6 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-4 w-full" />
-                    <Skeleton className="h-2 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <SkeletonProjectGrid />
+            </motion.div>
           ) : projects.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center py-16">
-                <FolderOpen className="w-16 h-16 text-muted-foreground mb-4" />
-                <h3 className="text-xl font-semibold mb-2">No projects yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  {user?.role === 'student'
-                    ? 'Create your first project to get started!'
-                    : 'You haven\'t been added to any projects yet.'}
-                </p>
-                {user?.role === 'student' && <CreateProjectDialog />}
-              </CardContent>
-            </Card>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="border-dashed border-2 hover:border-primary/50 transition-colors">
+                <CardContent className="flex flex-col items-center justify-center py-20">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", delay: 0.3 }}
+                  >
+                    <FolderOpen className="w-20 h-20 text-muted-foreground mb-6" />
+                  </motion.div>
+                  <h3 className="text-2xl font-semibold mb-2">No projects yet</h3>
+                  <p className="text-muted-foreground text-center mb-6 max-w-md">
+                    {user?.role === 'student'
+                      ? 'Create your first project to get started on your journey!'
+                      : 'You haven\'t been added to any projects yet. Contact your team to get started.'}
+                  </p>
+                  {user?.role === 'student' && <CreateProjectDialog />}
+                </CardContent>
+              </Card>
+            </motion.div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <motion.div
+              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+              initial="hidden"
+              animate="visible"
+              variants={{
+                hidden: { opacity: 0 },
+                visible: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.1,
+                  },
+                },
+              }}
+            >
               {projects.map((project) => (
-                <ProjectCard
+                <motion.div
                   key={project.id}
-                  id={project.id}
-                  title={project.name}
-                  description={project.description || 'No description provided'}
-                  progress={0} // We'll calculate this later based on tasks
-                  dueDate="No due date" // We'll add this field later
-                  members={project.memberCount || 0}
-                  status="active"
-                />
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    visible: { opacity: 1, y: 0 },
+                  }}
+                >
+                  <ProjectCard
+                    id={project.id}
+                    title={project.name}
+                    description={project.description || 'No description provided'}
+                    progress={0}
+                    dueDate="No due date"
+                    members={project.memberCount || 0}
+                    status="active"
+                  />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
         </main>
       </div>

@@ -1,0 +1,74 @@
+/* Command Palette Styles */
+[cmdk-root] {
+  max-width: 100%;
+}
+
+[cmdk-group-heading] {
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+  margin-bottom: 4px;
+  margin-top: 8px;
+}
+
+[cmdk-group]:first-child [cmdk-group-heading] {
+  margin-top: 0;
+}
+
+[cmdk-item] {
+  cursor: pointer;
+  height: auto;
+  border-radius: 6px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  color: hsl(var(--foreground));
+  user-select: none;
+  will-change: background, color;
+  transition: all 150ms ease;
+}
+
+[cmdk-item][aria-selected='true'] {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+[cmdk-item][aria-disabled='true'] {
+  color: hsl(var(--muted-foreground));
+  cursor: not-allowed;
+}
+
+[cmdk-input] {
+  font-family: inherit;
+  border: none;
+  width: 100%;
+  font-size: 15px;
+  padding: 8px 8px 16px 8px;
+  outline: none;
+  background-color: transparent;
+  color: hsl(var(--foreground));
+}
+
+[cmdk-input]::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+[cmdk-list] {
+  height: min(330px, var(--cmdk-list-height));
+  max-height: 400px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+[cmdk-empty] {
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 64px;
+  color: hsl(var(--muted-foreground));
+}
+

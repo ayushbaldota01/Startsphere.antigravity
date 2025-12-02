@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -9,114 +8,73 @@ import { WorkTable } from '@/components/project/WorkTable';
 import { ConferenceRoom } from '@/components/project/ConferenceRoom';
 import { ScratchPad } from '@/components/project/ScratchPad';
 import { FileShelf } from '@/components/project/FileShelf';
-import { useProjects } from '@/hooks/useProjects';
+import { useProjects, useProjectDetail } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
-import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeamWorkspace } from '@/components/workspace/TeamWorkspace';
+import { useEffect } from 'react';
+import { Layout } from 'lucide-react';
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { getProject, addMember, removeMember, getProjectMembers } = useProjects();
+  const { addMember, removeMember } = useProjects();
   const { tasks } = useTasks(id);
 
-  const [project, setProject] = useState<any>(null);
-  const [members, setMembers] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Use the optimized hook that fetches everything in one RPC call
+  const {
+    project,
+    members,
+    userRole,
+    taskStats: rpcTaskStats,
+    isLoading,
+    error,
+    refetch
+  } = useProjectDetail(id);
 
+  // Handle error - redirect if no access
   useEffect(() => {
-    const fetchProjectData = async () => {
-      if (!id) return;
+    if (error || (!isLoading && !project && id)) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Project not found or you don\'t have access.',
+      });
+      navigate('/dashboard');
+    }
+  }, [error, isLoading, project, id, navigate, toast]);
 
-      try {
-        setIsLoading(true);
+  // Format members for child components
+  const formattedMembers = (members || []).map((m: { id: string; name: string; email: string; role: 'ADMIN' | 'MEMBER'; avatar_url?: string }) => ({
+    id: m.id,
+    name: m.name,
+    email: m.email,
+    role: m.role,
+    avatar_url: m.avatar_url,
+  }));
 
-        // Fetch project
-        const projectData = await getProject(id);
-        if (!projectData) {
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Project not found or you don\'t have access.',
-          });
-          navigate('/dashboard');
-          return;
-        }
-        setProject(projectData);
-
-        // Fetch members
-        const { data: membersData, error } = await supabase
-          .from('project_members')
-          .select(`
-            id,
-            role,
-            user:users(id, name, email)
-          `)
-          .eq('project_id', id);
-
-        if (error) throw error;
-
-        const formattedMembers = membersData.map((m: any) => ({
-          id: m.user.id,
-          name: m.user.name,
-          email: m.user.email,
-          role: m.role,
-        }));
-
-        setMembers(formattedMembers);
-      } catch (error) {
-        console.error('Error fetching project:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Failed to load project data.',
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchProjectData();
-  }, [id]);
+  // Use RPC task stats if available, otherwise calculate from tasks array
+  const taskStats = rpcTaskStats || {
+    total: tasks.length,
+    todo: tasks.filter((t) => t.status === 'TODO').length,
+    in_progress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
+    done: tasks.filter((t) => t.status === 'DONE').length,
+  };
 
   const handleAddMember = async (email: string, role: 'ADMIN' | 'MEMBER') => {
     if (!id) return;
     await addMember(id, email, role);
-    // Refresh members list
-    const updatedMembers = await getProjectMembers(id);
-    const formattedMembers = updatedMembers.map((m: any) => ({
-      id: m.users.id,
-      name: m.users.name,
-      email: m.users.email,
-      role: m.role,
-    }));
-    setMembers(formattedMembers);
+    // React Query will automatically refetch due to invalidation
   };
 
   const handleRemoveMember = async (userId: string) => {
     if (!id) return;
     await removeMember(id, userId);
-    // Refresh members list
-    const updatedMembers = await getProjectMembers(id);
-    const formattedMembers = updatedMembers.map((m: any) => ({
-      id: m.users.id,
-      name: m.users.name,
-      email: m.users.email,
-      role: m.role,
-    }));
-    setMembers(formattedMembers);
-  };
-
-  const taskStats = {
-    total: tasks.length,
-    todo: tasks.filter((t) => t.status === 'TODO').length,
-    in_progress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
-    done: tasks.filter((t) => t.status === 'DONE').length,
+    // React Query will automatically refetch due to invalidation
   };
 
   if (isLoading) {
@@ -149,7 +107,7 @@ const ProjectDetail = () => {
             <SidebarTrigger />
             <h2 className="text-lg font-semibold">{project.name}</h2>
           </div>
-          {project.role === 'ADMIN' && (
+          {userRole === 'ADMIN' && (
             <AddMemberDialog projectId={id!} onAddMember={handleAddMember} />
           )}
         </header>
@@ -157,22 +115,31 @@ const ProjectDetail = () => {
         <main className="flex-1 p-6 bg-background overflow-y-auto">
           <Tabs defaultValue="workspace" className="space-y-4">
             <TabsList>
-              <TabsTrigger value="workspace">Team Workspace</TabsTrigger>
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="tasks">Work Table</TabsTrigger>
               <TabsTrigger value="chat">Conference Room</TabsTrigger>
               <TabsTrigger value="notes">Scratch Pad</TabsTrigger>
               <TabsTrigger value="files">File Shelf</TabsTrigger>
+              <TabsTrigger value="workspace">Team Workspace</TabsTrigger>
             </TabsList>
 
             <TabsContent value="workspace" className="h-[calc(100vh-12rem)]">
-              <TeamWorkspace projectId={id!} />
+              <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg bg-muted/10">
+                <div className="p-4 rounded-full bg-primary/10 mb-4">
+                  <Layout className="w-8 h-8 text-primary opacity-50" />
+                </div>
+                <h3 className="text-2xl font-bold mb-2">Team Workspace</h3>
+                <p className="text-muted-foreground mb-6">This feature is coming soon!</p>
+                <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                  Under Development
+                </div>
+              </div>
             </TabsContent>
 
             <TabsContent value="overview">
               <OfficeOverview
-                project={project}
-                members={members}
+                project={{ ...project, role: userRole }}
+                members={formattedMembers}
                 taskStats={taskStats}
                 onRemoveMember={handleRemoveMember}
                 currentUserId={user?.id}
@@ -180,7 +147,7 @@ const ProjectDetail = () => {
             </TabsContent>
 
             <TabsContent value="tasks">
-              <WorkTable projectId={id!} members={members} />
+              <WorkTable projectId={id!} members={formattedMembers} />
             </TabsContent>
 
             <TabsContent value="chat">
@@ -196,7 +163,7 @@ const ProjectDetail = () => {
             </TabsContent>
           </Tabs>
         </main>
-      </div>
+      </div >
     </>
   );
 };

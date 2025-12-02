@@ -1,7 +1,15 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, type User } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+
+// Session storage key for caching profile
+const PROFILE_CACHE_KEY = 'startsphere-profile-cache';
+
+interface CachedProfile {
+  user: User;
+  timestamp: number;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -10,129 +18,182 @@ interface AuthContextType {
   register: (email: string, password: string, name: string, role: 'student' | 'mentor') => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
+  isProfileLoading: boolean;
   refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Cache expiry time: 5 minutes
+const CACHE_EXPIRY = 5 * 60 * 1000;
+
+// Helper to get cached profile
+const getCachedProfile = (userId: string): User | null => {
+  try {
+    const cached = sessionStorage.getItem(`${PROFILE_CACHE_KEY}-${userId}`);
+    if (!cached) return null;
+
+    const { user, timestamp }: CachedProfile = JSON.parse(cached);
+
+    // Check if cache is expired
+    if (Date.now() - timestamp > CACHE_EXPIRY) {
+      sessionStorage.removeItem(`${PROFILE_CACHE_KEY}-${userId}`);
+      return null;
+    }
+
+    return user;
+  } catch {
+    return null;
+  }
+};
+
+// Helper to set cached profile
+const setCachedProfile = (user: User): void => {
+  try {
+    const cached: CachedProfile = {
+      user,
+      timestamp: Date.now(),
+    };
+    sessionStorage.setItem(`${PROFILE_CACHE_KEY}-${user.id}`, JSON.stringify(cached));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
+// Helper to clear cached profile
+const clearCachedProfile = (userId?: string): void => {
+  try {
+    if (userId) {
+      sessionStorage.removeItem(`${PROFILE_CACHE_KEY}-${userId}`);
+    } else {
+      // Clear all profile caches
+      Object.keys(sessionStorage)
+        .filter((key) => key.startsWith(PROFILE_CACHE_KEY))
+        .forEach((key) => sessionStorage.removeItem(key));
+    }
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const navigate = useNavigate();
 
-  const fetchUserProfile = async (userId: string, retryCount = 0): Promise<User | null> => {
-    const MAX_RETRIES = 3;
-    const RETRY_DELAY = 1000; // 1 second base delay
+  // Fetch user profile with caching and timeout
+  const fetchUserProfile = useCallback(async (userId: string, useCache = true): Promise<User | null> => {
+    // Try cache first
+    if (useCache) {
+      const cachedUser = getCachedProfile(userId);
+      if (cachedUser) {
+        console.log('[AuthContext] Using cached profile');
+        return cachedUser;
+      }
+    }
 
     try {
-      console.log(`[AuthContext] Fetching profile for user ID: ${userId} (attempt ${retryCount + 1}/${MAX_RETRIES + 1})`);
+      console.log('[AuthContext] Fetching profile from database');
 
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 5000)
-      );
+      // Use AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
 
-      const fetchPromise = supabase
+      const { data, error } = await supabase
         .from('users')
         .select('*')
         .eq('id', userId)
-        .single();
+        .single()
+        .abortSignal(controller.signal as any);
 
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
+      clearTimeout(timeoutId);
 
       if (error) {
-        console.error('[AuthContext] Error fetching profile:', {
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          code: error.code,
-        });
-
-        // Retry on certain errors
-        if (retryCount < MAX_RETRIES && (error.code === 'PGRST116' || error.message.includes('timeout'))) {
-          const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
-          console.log(`[AuthContext] Retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          return fetchUserProfile(userId, retryCount + 1);
-        }
-
+        console.error('[AuthContext] Error fetching profile:', error.message);
         return null;
       }
 
-      if (!data) {
-        console.warn('[AuthContext] No profile data returned for user:', userId);
-        return null;
-      }
-
-      console.log('[AuthContext] Profile fetched successfully:', {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role,
-      });
-
-      return data as User;
-    } catch (error: any) {
-      console.error('[AuthContext] Exception while fetching user profile:', error);
-
-      // Retry on network errors or timeouts
-      if (retryCount < MAX_RETRIES && (error.message.includes('timeout') || error.message.includes('network'))) {
-        const delay = RETRY_DELAY * Math.pow(2, retryCount);
-        console.log(`[AuthContext] Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchUserProfile(userId, retryCount + 1);
+      if (data) {
+        // Cache the profile
+        setCachedProfile(data as User);
+        console.log('[AuthContext] Profile fetched and cached');
+        return data as User;
       }
 
       return null;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn('[AuthContext] Profile fetch timed out');
+      } else {
+        console.error('[AuthContext] Exception fetching profile:', error);
+      }
+      return null;
     }
-  };
+  }, []);
 
+  // Initialize auth - fast path using session and cache
   useEffect(() => {
     let mounted = true;
 
     const initAuth = async () => {
       try {
         console.log('[AuthContext] Initializing auth...');
+
+        // Get session first (fast - from localStorage)
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
           console.error('[AuthContext] Error getting session:', error);
-          throw error;
+          if (mounted) setIsLoading(false);
+          return;
         }
-
-        console.log('[AuthContext] Session retrieved:', session ? 'exists' : 'null');
 
         if (mounted) {
           setSession(session);
 
           if (session?.user) {
-            console.log('[AuthContext] Fetching user profile...');
-            const profile = await fetchUserProfile(session.user.id);
-            if (mounted && profile) {
-              console.log('[AuthContext] Profile loaded successfully');
-              setUser(profile);
-            } else if (mounted && !profile) {
-              console.warn('[AuthContext] Profile not found, but session exists');
-              // Keep session but set user to null - will trigger profile creation on next action
-              setUser(null);
+            // Try cache first for instant load
+            const cachedUser = getCachedProfile(session.user.id);
+            if (cachedUser) {
+              console.log('[AuthContext] Using cached profile for instant load');
+              setUser(cachedUser);
+              setIsLoading(false);
+
+              // Refresh profile in background (non-blocking)
+              setIsProfileLoading(true);
+              fetchUserProfile(session.user.id, false).then((freshProfile) => {
+                if (mounted && freshProfile) {
+                  setUser(freshProfile);
+                }
+                if (mounted) setIsProfileLoading(false);
+              });
+            } else {
+              // No cache - fetch profile (blocking to ensure user data is present)
+              setIsProfileLoading(true);
+
+              const profile = await fetchUserProfile(session.user.id);
+              if (mounted) {
+                setUser(profile);
+                setIsProfileLoading(false);
+                setIsLoading(false);
+              }
             }
           } else {
             console.log('[AuthContext] No session found');
+            setIsLoading(false);
           }
         }
       } catch (error) {
         console.error('[AuthContext] Error initializing auth:', error);
-      } finally {
-        if (mounted) {
-          console.log('[AuthContext] Auth initialization complete, setting isLoading to false');
-          setIsLoading(false);
-        }
+        if (mounted) setIsLoading(false);
       }
     };
 
     initAuth();
 
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -141,27 +202,39 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('[AuthContext] Auth state changed:', event);
       setSession(session);
 
-      if (session?.user) {
-        const profile = await fetchUserProfile(session.user.id);
-        if (mounted) {
-          setUser(profile);
-        }
-      } else {
-        if (mounted) {
-          setUser(null);
-        }
+      if (event === 'SIGNED_OUT') {
+        clearCachedProfile();
+        setUser(null);
+        setIsLoading(false);
+        return;
       }
 
-      if (mounted) {
-        setIsLoading(false);
+      if (session?.user) {
+        // Try cache first
+        const cachedUser = getCachedProfile(session.user.id);
+        if (cachedUser) {
+          setUser(cachedUser);
+        }
+
+        // Fetch fresh profile
+        setIsProfileLoading(true);
+        const profile = await fetchUserProfile(session.user.id, false);
+        if (mounted) {
+          if (profile) setUser(profile);
+          setIsProfileLoading(false);
+        }
+      } else {
+        setUser(null);
       }
+
+      if (mounted) setIsLoading(false);
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserProfile]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -173,7 +246,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
 
       if (data.user) {
-        const profile = await fetchUserProfile(data.user.id);
+        const profile = await fetchUserProfile(data.user.id, false);
         setUser(profile);
         navigate('/dashboard');
       }
@@ -201,13 +274,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (!authData.user) throw new Error('User creation failed');
 
       // Step 2: Wait briefly for the trigger to create the profile
-      // The trigger on auth.users will create the public.users row
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Step 3: Fetch the complete profile
-      const profile = await fetchUserProfile(authData.user.id);
-      setUser(profile);
-      navigate('/dashboard');
+      // Step 3: Fetch the complete profile (with retry)
+      let profile: User | null = null;
+      for (let i = 0; i < 3; i++) {
+        profile = await fetchUserProfile(authData.user.id, false);
+        if (profile) break;
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      if (profile) {
+        setUser(profile);
+        navigate('/dashboard');
+      } else {
+        // Still navigate - profile will be fetched on next load
+        navigate('/dashboard');
+      }
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -216,8 +299,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      const userId = user?.id;
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
+      // Clear cache
+      if (userId) clearCachedProfile(userId);
+
       setUser(null);
       setSession(null);
       navigate('/login');
@@ -229,13 +317,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshUser = async () => {
     if (session?.user) {
-      const profile = await fetchUserProfile(session.user.id);
+      setIsProfileLoading(true);
+      const profile = await fetchUserProfile(session.user.id, false);
       setUser(profile);
+      setIsProfileLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, login, register, logout, isLoading, refreshUser }}>
+    <AuthContext.Provider value={{
+      user,
+      session,
+      login,
+      register,
+      logout,
+      isLoading,
+      isProfileLoading,
+      refreshUser
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -248,4 +347,3 @@ export const useAuth = () => {
   }
   return context;
 };
-

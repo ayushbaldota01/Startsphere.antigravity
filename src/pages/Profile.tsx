@@ -3,6 +3,7 @@ import { Sidebar } from '@/components/Sidebar';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -85,6 +86,7 @@ const Profile = () => {
           <SidebarTrigger />
           <h2 className="text-lg font-semibold">Profile</h2>
           <div className="flex-1" />
+          <ThemeToggle />
           {isEditing ? (
             <>
               <Button
