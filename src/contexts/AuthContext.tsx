@@ -98,18 +98,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       try {
         console.log(`[AuthContext] Fetching profile from database (attempts left: ${retries})`);
 
-        // Use AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        // Create a promise that rejects after 10 seconds
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 10000);
+        });
 
-        const { data, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', userId)
-          .single()
-          .abortSignal(controller.signal as any);
-
-        clearTimeout(timeoutId);
+        // Race the fetch against the timeout
+        const { data, error } = await Promise.race([
+          supabase
+            .from('users')
+            .select('*')
+            .eq('id', userId)
+            .single(),
+          timeoutPromise
+        ]) as any;
 
         if (error) {
           console.error('[AuthContext] Error fetching profile:', error.message);
@@ -129,11 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
         return null;
       } catch (error: any) {
-        if (error.name === 'AbortError') {
-          console.warn('[AuthContext] Profile fetch timed out');
-        } else {
-          console.error('[AuthContext] Exception fetching profile:', error);
-        }
+        console.error('[AuthContext] Exception fetching profile:', error);
 
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, delay));
