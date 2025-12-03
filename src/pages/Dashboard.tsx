@@ -96,13 +96,7 @@ const Dashboard = () => {
               }}
             >
               {projects.map((project) => (
-                <motion.div
-                  key={project.id}
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    visible: { opacity: 1, y: 0 },
-                  }}
-                >
+                <div key={project.id}>
                   <ProjectCard
                     id={project.id}
                     title={project.name}
@@ -112,7 +106,7 @@ const Dashboard = () => {
                     members={project.memberCount || 0}
                     status="active"
                   />
-                </motion.div>
+                </div>
               ))}
             </motion.div>
           )}

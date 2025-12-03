@@ -15,14 +15,21 @@ import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeamWorkspace } from '@/components/workspace/TeamWorkspace';
 import { useEffect } from 'react';
-import { Layout } from 'lucide-react';
+import { Layout, MoreVertical, Trash2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { addMember, removeMember } = useProjects();
+  const { addMember, removeMember, deleteProject } = useProjects();
   const { tasks } = useTasks(id);
 
   // Use the optimized hook that fetches everything in one RPC call
@@ -108,7 +115,29 @@ const ProjectDetail = () => {
             <h2 className="text-lg font-semibold">{project.name}</h2>
           </div>
           {userRole === 'ADMIN' && (
-            <AddMemberDialog projectId={id!} onAddMember={handleAddMember} />
+            <div className="flex items-center gap-2">
+              <AddMemberDialog projectId={id!} onAddMember={handleAddMember} />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
+                        deleteProject(id!).then(() => navigate('/dashboard'));
+                      }
+                    }}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           )}
         </header>
 
