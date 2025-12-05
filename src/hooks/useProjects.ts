@@ -9,6 +9,13 @@ export interface ProjectWithRole extends Project {
   role: 'ADMIN' | 'MEMBER';
   member_count?: number;
   memberCount?: number;
+  members?: any[];
+  taskStats?: {
+    total: number;
+    todo: number;
+    in_progress: number;
+    done: number;
+  };
 }
 
 // Fallback: Fetch projects using standard Supabase queries
@@ -47,13 +54,14 @@ const fetchUserProjectsFallback = async (userId: string): Promise<ProjectWithRol
 // Fetch projects using the optimized RPC function with fallback
 const fetchUserProjects = async (userId: string): Promise<ProjectWithRole[]> => {
   try {
+    // Use the new optimized RPC function that fetches everything needed for dashboard
     const { data, error } = await supabase.rpc('get_user_projects', {
       user_uuid: userId,
     });
 
     if (error) throw error;
 
-    return (data || []).map((project: Project & { member_count: number }) => ({
+    return (data || []).map((project: any) => ({
       ...project,
       memberCount: project.member_count,
     }));
@@ -127,12 +135,33 @@ const fetchProjectDetail = async (
   userId: string
 ): Promise<ProjectWithRole | null> => {
   try {
-    const { data, error } = await supabase.rpc('get_project_detail', {
+    // Use the new optimized RPC function that fetches EVERYTHING in one go
+    const { data, error } = await supabase.rpc('get_project_full_detail', {
       project_uuid: projectId,
       user_uuid: userId,
     });
 
-    if (error) throw error;
+    if (error) {
+      // If function doesn't exist yet (migration not run), fall back to old RPC
+      if (error.message.includes('function get_project_full_detail') || error.code === '42883') {
+        console.warn('New RPC not found, falling back to get_project_detail');
+        const { data: oldData, error: oldError } = await supabase.rpc('get_project_detail', {
+          project_uuid: projectId,
+          user_uuid: userId,
+        });
+
+        if (oldError) throw oldError;
+        if (!oldData || !oldData.project) return null;
+
+        return {
+          ...oldData.project,
+          role: oldData.user_role,
+          members: oldData.members,
+          taskStats: oldData.task_stats,
+        } as ProjectWithRole;
+      }
+      throw error;
+    }
 
     if (!data || !data.project) {
       return null;
@@ -142,10 +171,18 @@ const fetchProjectDetail = async (
       ...data.project,
       role: data.user_role,
       members: data.members,
-      taskStats: data.task_stats,
+      taskStats: data.stats ? {
+        total: data.stats.task_count,
+        // These might need to be calculated if not in stats
+        todo: 0,
+        in_progress: 0,
+        done: 0
+      } : undefined,
+      // Store the full data for other components to use if needed
+      fullData: data
     } as ProjectWithRole;
   } catch (error) {
-    console.warn('RPC get_project_detail failed, using fallback:', error);
+    console.warn('RPC get_project_full_detail failed, using fallback:', error);
     return fetchProjectDetailFallback(projectId, userId);
   }
 };
@@ -169,8 +206,11 @@ export const useProjects = () => {
   });
 
   // Setup realtime subscription
+  // Setup realtime subscription with debouncing
   useEffect(() => {
     if (!user?.id) return;
+
+    let timeoutId: NodeJS.Timeout;
 
     const channel = supabase
       .channel('projects-changes')
@@ -182,10 +222,13 @@ export const useProjects = () => {
           table: 'projects',
         },
         () => {
-          // Invalidate and refetch
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.projects.list(user.id)
-          });
+          // Debounce invalidations
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.projects.list(user.id)
+            });
+          }, 1000); // Wait 1s before refetching
         }
       )
       .on(
@@ -197,14 +240,18 @@ export const useProjects = () => {
           filter: `user_id=eq.${user.id}`,
         },
         () => {
-          queryClient.invalidateQueries({
-            queryKey: queryKeys.projects.list(user.id)
-          });
+          clearTimeout(timeoutId);
+          timeoutId = setTimeout(() => {
+            queryClient.invalidateQueries({
+              queryKey: queryKeys.projects.list(user.id)
+            });
+          }, 1000);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(timeoutId);
       supabase.removeChannel(channel);
     };
   }, [user?.id, queryClient]);

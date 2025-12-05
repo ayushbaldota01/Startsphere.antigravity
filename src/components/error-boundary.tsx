@@ -38,11 +38,27 @@ export class ErrorBoundary extends Component<Props, State> {
     window.location.href = '/dashboard';
   };
 
+  private isNetworkError(error: Error | null): boolean {
+    if (!error) return false;
+    return (
+      error.message.includes('Failed to fetch') ||
+      error.message.includes('Network request failed') ||
+      error.message.includes('NetworkError') ||
+      error.message.includes('connection')
+    );
+  }
+
   public render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
       }
+
+      const isNetwork = this.isNetworkError(this.state.error);
+      const title = isNetwork ? "Connection Error" : "Something went wrong";
+      const description = isNetwork
+        ? "We couldn't connect to the server. Please check your internet connection and try again."
+        : "We encountered an unexpected error. Don't worry, your data is safe.";
 
       return (
         <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
@@ -61,13 +77,13 @@ export class ErrorBoundary extends Component<Props, State> {
                 >
                   <AlertTriangle className="w-10 h-10 text-destructive" />
                 </motion.div>
-                <CardTitle className="text-2xl">Something went wrong</CardTitle>
+                <CardTitle className="text-2xl">{title}</CardTitle>
                 <CardDescription className="text-base mt-2">
-                  We encountered an unexpected error. Don't worry, your data is safe.
+                  {description}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {this.state.error && (
+                {this.state.error && !isNetwork && (
                   <details className="text-sm">
                     <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground mb-2">
                       Error Details
@@ -79,7 +95,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     </pre>
                   </details>
                 )}
-                
+
                 <div className="flex gap-3 justify-center pt-4">
                   <Button onClick={this.handleReset} className="gap-2">
                     <RefreshCw className="w-4 h-4" />

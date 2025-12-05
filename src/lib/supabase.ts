@@ -10,11 +10,22 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    storage: window.localStorage, // Explicitly use localStorage for session persistence
-    storageKey: 'startsphere-auth', // Custom storage key for better organization
-    flowType: 'pkce', // Use PKCE flow for better security
+    persistSession: false, // DISABLED per user request to force login on load
+    detectSessionInUrl: false, // Disable URL session detection
+    flowType: 'pkce',
+  },
+  global: {
+    fetch: (url, options) => {
+      return fetch(url, {
+        ...options,
+        // Increase timeout to 30s for slow connections
+        signal: AbortSignal.timeout(30000),
+      });
+    },
+  },
+  // Improve reliability
+  db: {
+    schema: 'public',
   },
 });
 

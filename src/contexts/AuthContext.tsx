@@ -152,6 +152,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const handleSession = async (currentSession: Session | null) => {
       if (!mounted) return;
 
+      // Prevent concurrent handling
+      if (initLock) {
+        console.log('[AuthContext] Session handling locked, skipping');
+        return;
+      }
+      initLock = true;
+
       try {
         if (currentSession?.user) {
           setSession(currentSession);
@@ -161,32 +168,52 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (cachedUser) {
             console.log('[AuthContext] Using cached profile for instant load');
             setUser(cachedUser);
-            setIsLoading(false); // Show UI immediately with cached data
+            setIsLoading(false);
 
             // Refresh in background
-            setIsProfileLoading(true);
-            const freshProfile = await fetchUserProfile(currentSession.user.id, false);
-            if (mounted && freshProfile) {
-              setUser(freshProfile);
-            }
-            if (mounted) setIsProfileLoading(false);
-          } else {
-            // No cache - blocking load
-            setIsProfileLoading(true);
-            const profile = await fetchUserProfile(currentSession.user.id, false);
-
-            if (mounted) {
-              if (profile) {
-                setUser(profile);
-              } else {
-                // Session exists but profile fetch failed after retries
-                console.error('[AuthContext] Critical: Session exists but profile missing');
-                // Don't logout automatically to avoid loops, but maybe show error?
-                // For now, keep user null so UI handles it (or shows "User")
-                // But we must stop loading
+            fetchUserProfile(currentSession.user.id, false).then(freshProfile => {
+              if (mounted && freshProfile) {
+                if (JSON.stringify(freshProfile) !== JSON.stringify(cachedUser)) {
+                  setUser(freshProfile);
+                }
               }
-              setIsProfileLoading(false);
-              setIsLoading(false);
+            });
+          } else {
+            // OPTIMIZATION: Use session metadata for immediate UI rendering
+            // This prevents the "delay" the user is seeing
+            const metadata = currentSession.user.user_metadata;
+            if (metadata && metadata.name) {
+              console.log('[AuthContext] Hydrating from session metadata for instant load');
+              const tempUser: User = {
+                id: currentSession.user.id,
+                email: currentSession.user.email!,
+                name: metadata.name,
+                role: metadata.role || 'student',
+                created_at: currentSession.user.created_at,
+                updated_at: currentSession.user.updated_at || new Date().toISOString(),
+                // Optional fields might be missing, but that's okay for initial render
+              };
+              setUser(tempUser);
+              setIsLoading(false); // UNBLOCK UI IMMEDIATELY
+
+              // Fetch full profile in background
+              fetchUserProfile(currentSession.user.id, false).then(profile => {
+                if (mounted && profile) {
+                  setUser(profile);
+                }
+              });
+            } else {
+              // Fallback to blocking load if no metadata (rare)
+              setIsProfileLoading(true);
+              const profile = await fetchUserProfile(currentSession.user.id, false);
+
+              if (mounted) {
+                if (profile) {
+                  setUser(profile);
+                }
+                setIsProfileLoading(false);
+                setIsLoading(false);
+              }
             }
           }
         } else {
@@ -199,6 +226,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } catch (error) {
         console.error('[AuthContext] Error handling session:', error);
         if (mounted) setIsLoading(false);
+      } finally {
+        initLock = false;
       }
     };
 
@@ -208,15 +237,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       initLock = true;
 
       console.log('[AuthContext] Initializing...');
-      const { data: { session }, error } = await supabase.auth.getSession();
+      try {
+        // Since persistence is disabled, this will likely return null on reload
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-      if (error) {
-        console.error('[AuthContext] Error getting session:', error);
-        setIsLoading(false);
-        return;
+        if (error) {
+          console.error('[AuthContext] Error getting session:', error);
+          if (mounted) setIsLoading(false);
+          return;
+        }
+
+        if (session) {
+          await handleSession(session);
+        } else {
+          // No session found (expected behavior now)
+          console.log('[AuthContext] No session found, user must login');
+          setSession(null);
+          setUser(null);
+          clearCachedProfile();
+          setIsLoading(false);
+        }
+      } catch (err) {
+        console.error('[AuthContext] Initialization error:', err);
+        if (mounted) setIsLoading(false);
+      } finally {
+        initLock = false;
       }
-
-      await handleSession(session);
     };
 
     init();
@@ -227,9 +273,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('[AuthContext] Auth state changed:', event);
 
+      if (!mounted) return;
+
       if (event === 'INITIAL_SESSION') {
-        // Handled by init(), but if init() missed it or race condition, handle here?
-        // Usually getSession covers this.
+        // Handled by init()
         return;
       }
 

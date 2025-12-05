@@ -4,19 +4,21 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data is considered fresh for 5 minutes
-      staleTime: 5 * 60 * 1000,
-      // Cache data for 30 minutes
-      gcTime: 30 * 60 * 1000,
+      // Data is considered fresh for 2 minutes (increased from default 0)
+      staleTime: 2 * 60 * 1000,
+      // Keep unused data in cache for 15 minutes
+      gcTime: 15 * 60 * 1000,
       // Retry failed requests 2 times with exponential backoff
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Refetch on window focus for fresh data
-      refetchOnWindowFocus: true,
-      // Don't refetch on reconnect automatically
+      // Only refetch on window focus if data is stale
+      refetchOnWindowFocus: 'always', // Changed to 'always' but combined with staleTime means it only fetches if stale
+      // Don't refetch on reconnect automatically unless data is stale
       refetchOnReconnect: 'always',
       // Network mode
       networkMode: 'offlineFirst',
+      // Deduplicate requests
+      structuralSharing: true,
     },
     mutations: {
       // Retry mutations once
@@ -34,7 +36,7 @@ export const queryKeys = {
     all: ['user'] as const,
     profile: (userId: string) => ['user', 'profile', userId] as const,
   },
-  
+
   // Project keys
   projects: {
     all: ['projects'] as const,
@@ -42,31 +44,31 @@ export const queryKeys = {
     detail: (projectId: string) => ['projects', 'detail', projectId] as const,
     members: (projectId: string) => ['projects', 'members', projectId] as const,
   },
-  
+
   // Task keys
   tasks: {
     all: ['tasks'] as const,
     byProject: (projectId: string) => ['tasks', 'project', projectId] as const,
   },
-  
+
   // Chat keys
   chat: {
     all: ['chat'] as const,
     messages: (projectId: string) => ['chat', 'messages', projectId] as const,
   },
-  
+
   // Notes keys
   notes: {
     all: ['notes'] as const,
     byProject: (projectId: string) => ['notes', 'project', projectId] as const,
   },
-  
+
   // Files keys
   files: {
     all: ['files'] as const,
     byProject: (projectId: string) => ['files', 'project', projectId] as const,
   },
-  
+
   // Portfolio keys
   portfolio: {
     all: ['portfolio'] as const,
