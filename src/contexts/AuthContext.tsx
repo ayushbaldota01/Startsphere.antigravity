@@ -321,6 +321,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (email: string, password: string, name: string, role: 'student' | 'mentor') => {
     try {
+      console.log('[AuthContext] Registering user with role:', role);
+      
       // Step 1: Sign up the user with metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email,
@@ -336,26 +338,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('User creation failed');
 
-      // Step 2: Wait briefly for the trigger to create the profile
-      await new Promise(resolve => setTimeout(resolve, 500));
+      console.log('[AuthContext] User created in auth.users, waiting for trigger...');
 
-      // Step 3: Fetch the complete profile (with retry)
+      // Step 2: Wait for the trigger to create the profile (increased wait time)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Step 3: Fetch the complete profile (with retry and increased attempts)
       let profile: User | null = null;
-      for (let i = 0; i < 3; i++) {
+      for (let i = 0; i < 5; i++) {
+        console.log(`[AuthContext] Attempting to fetch profile, attempt ${i + 1}/5`);
         profile = await fetchUserProfile(authData.user.id, false);
-        if (profile) break;
-        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        if (profile) {
+          console.log('[AuthContext] Profile fetched successfully:', profile);
+          
+          // Verify the role matches what was requested
+          if (profile.role !== role) {
+            console.warn('[AuthContext] Role mismatch! Expected:', role, 'Got:', profile.role);
+          }
+          
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       if (profile) {
         setUser(profile);
+        console.log('[AuthContext] Navigating to dashboard with role:', profile.role);
         navigate('/dashboard');
       } else {
+        console.warn('[AuthContext] Profile not found after retries, navigating anyway');
         // Still navigate - profile will be fetched on next load
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Registration failed:', error);
+      console.error('[AuthContext] Registration failed:', error);
       throw error;
     }
   };

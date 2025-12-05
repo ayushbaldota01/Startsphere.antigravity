@@ -1,8 +1,12 @@
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProjects } from '@/hooks/useProjects';
+import { useMentorProjects } from '@/hooks/useMentorProjects';
+import { useMentorRequests } from '@/hooks/useMentorRequests';
+import { useMentorUnreadCount } from '@/hooks/useMentorMessages';
 import { NavLink } from '@/components/NavLink';
-import { Home, FolderKanban, User, LogOut, BarChart3, ChevronRight } from 'lucide-react';
+import { Home, FolderKanban, User, LogOut, BarChart3, ChevronRight, GraduationCap, Bell } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import {
   Sidebar as ShadcnSidebar,
   SidebarContent,
@@ -35,7 +39,14 @@ export const Sidebar = () => {
     userRole: user?.role,
   });
 
-  const { projects: userProjects } = useProjects();
+  const { projects: studentProjects } = useProjects();
+  const { projects: mentorProjects } = useMentorProjects();
+  const { requests: mentorRequests } = useMentorRequests();
+  const { totalUnread: mentorUnreadMessages } = useMentorUnreadCount();
+
+  // Use appropriate projects based on role
+  const userProjects = user?.role === 'mentor' ? mentorProjects : studentProjects;
+  const pendingRequestsCount = user?.role === 'mentor' ? mentorRequests.length : 0;
 
   // Map projects with colors
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500'];
@@ -81,29 +92,58 @@ export const Sidebar = () => {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {user?.role === 'mentor' && (
-                <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive('/reports')}>
-                    <NavLink to="/reports" activeClassName="bg-accent text-accent-foreground font-medium">
-                      <BarChart3 className="w-4 h-4" />
-                      {!collapsed && <span>Reports</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
+              {user?.role === 'mentor' && !collapsed && (
+                <>
+                  {pendingRequestsCount > 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <div className="relative flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary/10 text-primary cursor-default">
+                          <Bell className="w-4 h-4" />
+                          <span className="flex-1">Pending Requests</span>
+                          <Badge variant="default" className="h-5 min-w-[1.25rem] px-1 text-xs">
+                            {pendingRequestsCount}
+                          </Badge>
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                  {mentorUnreadMessages > 0 && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton asChild>
+                        <div className="relative flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-blue-500/10 text-blue-600 cursor-default">
+                          <Bell className="w-4 h-4" />
+                          <span className="flex-1">Unread Messages</span>
+                          <Badge variant="default" className="h-5 min-w-[1.25rem] px-1 text-xs bg-blue-600">
+                            {mentorUnreadMessages}
+                          </Badge>
+                        </div>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
+                </>
               )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Projects Section */}
-        {user?.role === 'student' && !collapsed && (
+        {!collapsed && (
           <SidebarGroup>
             <Collapsible defaultOpen={isProjectActive} className="group/collapsible">
               <SidebarGroupLabel asChild>
                 <CollapsibleTrigger className="flex items-center justify-between w-full">
                   <span className="flex items-center gap-2">
-                    <FolderKanban className="w-4 h-4" />
-                    Projects
+                    {user?.role === 'mentor' ? (
+                      <>
+                        <GraduationCap className="w-4 h-4" />
+                        <span>Guided Projects</span>
+                      </>
+                    ) : (
+                      <>
+                        <FolderKanban className="w-4 h-4" />
+                        <span>Projects</span>
+                      </>
+                    )}
                   </span>
                   <ChevronRight className="w-4 h-4 transition-transform group-data-[state=open]/collapsible:rotate-90" />
                 </CollapsibleTrigger>
@@ -127,7 +167,7 @@ export const Sidebar = () => {
                       ))
                     ) : (
                       <div className="px-3 py-2 text-sm text-muted-foreground">
-                        No projects yet
+                        {user?.role === 'mentor' ? 'No guided projects yet' : 'No projects yet'}
                       </div>
                     )}
                   </SidebarMenu>

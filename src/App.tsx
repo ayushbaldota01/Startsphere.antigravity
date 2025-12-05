@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
+import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -17,6 +17,7 @@ import { lazy, Suspense } from "react";
 const Login = lazy(() => import("./pages/Login"));
 const Register = lazy(() => import("./pages/Register"));
 const Dashboard = lazy(() => import("./pages/Dashboard"));
+const MentorDashboard = lazy(() => import("./pages/MentorDashboard"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
@@ -32,6 +33,22 @@ const PageLoader = () => (
     </div>
   </div>
 );
+
+// Component to route to correct dashboard based on role
+const DashboardRouter = () => {
+  const { user } = useAuth();
+  
+  // Debug logging
+  console.log('[DashboardRouter] User role:', user?.role, 'User:', user);
+  
+  if (user?.role === 'mentor') {
+    console.log('[DashboardRouter] Routing to MentorDashboard');
+    return <MentorDashboard />;
+  }
+  
+  console.log('[DashboardRouter] Routing to Student Dashboard');
+  return <Dashboard />;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -54,7 +71,7 @@ const App = () => (
                       <ProtectedRoute>
                         <SidebarProvider>
                           <div className="flex min-h-screen w-full">
-                            <Dashboard />
+                            <DashboardRouter />
                           </div>
                         </SidebarProvider>
                       </ProtectedRoute>

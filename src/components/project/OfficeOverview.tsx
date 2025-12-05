@@ -2,12 +2,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { UserMinus } from 'lucide-react';
+import { UserMinus, GraduationCap } from 'lucide-react';
 import type { ProjectWithRole } from '@/hooks/useProjects';
 
 interface OfficeOverviewProps {
   project: ProjectWithRole;
-  members: Array<{ id: string; name: string; email: string; role: string }>;
+  members: Array<{ 
+    id: string; 
+    name: string; 
+    email: string; 
+    role: string;
+    user_role?: string;
+    is_mentor?: boolean;
+  }>;
   taskStats?: {
     total: number;
     todo: number;
@@ -16,11 +23,12 @@ interface OfficeOverviewProps {
   };
   onRemoveMember?: (userId: string) => void;
   currentUserId?: string;
+  readOnly?: boolean;
 }
 
-export const OfficeOverview = ({ project, members, taskStats, onRemoveMember, currentUserId }: OfficeOverviewProps) => {
+export const OfficeOverview = ({ project, members, taskStats, onRemoveMember, currentUserId, readOnly = false }: OfficeOverviewProps) => {
   const progress = taskStats?.total ? Math.round((taskStats.done / taskStats.total) * 100) : 0;
-  const isAdmin = project.role === 'ADMIN';
+  const isAdmin = project.role === 'ADMIN' && !readOnly;
 
   return (
     <div className="space-y-6">
@@ -105,30 +113,50 @@ export const OfficeOverview = ({ project, members, taskStats, onRemoveMember, cu
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {members.map((member) => (
-              <div key={member.id} className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarFallback>{member.name.charAt(0).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium">{member.name}</p>
-                  <p className="text-sm text-muted-foreground">{member.email}</p>
+            {members.map((member) => {
+              // Check if member is a mentor (either by project_role or user_role)
+              const isMentor = member.is_mentor || member.role === 'MENTOR' || member.user_role === 'mentor';
+              const displayRole = member.role === 'MENTOR' ? 'MENTOR' : member.role;
+              
+              return (
+                <div key={member.id} className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarFallback className={isMentor ? 'bg-primary/20 text-primary' : ''}>
+                      {member.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">{member.name}</p>
+                      {isMentor && (
+                        <Badge variant="outline" className="text-xs bg-primary/10 text-primary border-primary/20">
+                          <GraduationCap className="w-3 h-3 mr-1" />
+                          Mentor
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{member.email}</p>
+                  </div>
+                  <Badge variant={
+                    displayRole === 'ADMIN' ? 'default' : 
+                    displayRole === 'MENTOR' ? 'outline' : 
+                    'secondary'
+                  } className={displayRole === 'MENTOR' ? 'border-primary text-primary' : ''}>
+                    {displayRole}
+                  </Badge>
+                  {isAdmin && onRemoveMember && member.id !== currentUserId && !readOnly && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => onRemoveMember(member.id)}
+                      title="Remove member"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                    </Button>
+                  )}
                 </div>
-                <Badge variant={member.role === 'ADMIN' ? 'default' : 'secondary'}>
-                  {member.role}
-                </Badge>
-                {isAdmin && onRemoveMember && member.id !== currentUserId && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => onRemoveMember(member.id)}
-                    title="Remove member"
-                  >
-                    <UserMinus className="w-4 h-4" />
-                  </Button>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </CardContent>
       </Card>

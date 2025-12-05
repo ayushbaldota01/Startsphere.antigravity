@@ -9,9 +9,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface FileShelfProps {
   projectId: string;
+  readOnly?: boolean;
 }
 
-export const FileShelf = ({ projectId }: FileShelfProps) => {
+export const FileShelf = ({ projectId, readOnly = false }: FileShelfProps) => {
   const { user } = useAuth();
   const { files, isLoading, isUploading, uploadFile, downloadFile, deleteFile, formatFileSize } =
     useFiles(projectId);
@@ -82,24 +83,28 @@ export const FileShelf = ({ projectId }: FileShelfProps) => {
       <Card>
         <CardHeader>
           <CardTitle>File Shelf</CardTitle>
-          <CardDescription>Upload and manage project files</CardDescription>
+          <CardDescription>
+            {readOnly ? 'View and download project files' : 'Upload and manage project files'}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <input
-            ref={fileInputRef}
-            type="file"
-            onChange={handleFileSelect}
-            className="hidden"
-            disabled={isUploading}
-          />
-          <Button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={isUploading}
-          >
-            <Upload className="w-4 h-4 mr-2" />
-            {isUploading ? 'Uploading...' : 'Upload File'}
-          </Button>
-        </CardContent>
+        {!readOnly && (
+          <CardContent>
+            <input
+              ref={fileInputRef}
+              type="file"
+              onChange={handleFileSelect}
+              className="hidden"
+              disabled={isUploading}
+            />
+            <Button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              {isUploading ? 'Uploading...' : 'Upload File'}
+            </Button>
+          </CardContent>
+        )}
       </Card>
 
       <div className="space-y-3">
@@ -133,7 +138,7 @@ export const FileShelf = ({ projectId }: FileShelfProps) => {
                     >
                       <Download className="w-4 h-4" />
                     </Button>
-                    {user?.id === file.uploaded_by && (
+                    {!readOnly && user?.id === file.uploaded_by && (
                       <Button
                         variant="outline"
                         size="sm"

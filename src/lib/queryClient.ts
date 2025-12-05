@@ -74,6 +74,27 @@ export const queryKeys = {
     all: ['portfolio'] as const,
     byUser: (userId: string) => ['portfolio', 'user', userId] as const,
   },
+  
+  // Mentor keys
+  mentorProjects: {
+    all: ['mentorProjects'] as const,
+    list: (mentorId: string) => ['mentorProjects', 'list', mentorId] as const,
+  },
+  
+  // Mentor requests keys
+  mentorRequests: {
+    all: ['mentorRequests'] as const,
+    pending: (mentorId: string) => ['mentorRequests', 'pending', mentorId] as const,
+    byProject: (projectId: string) => ['mentorRequests', 'project', projectId] as const,
+  },
+  
+  // Mentor messages keys
+  mentorMessages: {
+    all: ['mentorMessages'] as const,
+    byProject: (projectId: string) => ['mentorMessages', 'project', projectId] as const,
+    thread: (messageId: string) => ['mentorMessages', 'thread', messageId] as const,
+    unreadCount: (mentorId: string) => ['mentorMessages', 'unread', mentorId] as const,
+  },
 };
 
 // Helper to invalidate all project-related queries
