@@ -280,12 +280,16 @@ export const useMentorMessages = (projectId: string | undefined) => {
     return markAsReadMutation.mutateAsync(messageIds);
   };
 
-  // Filter messages for mentors (only show messages to/from them)
+  // Filter messages for mentors (show messages to/from them, or without specific recipient)
   const filteredMessages = user?.role === 'mentor'
     ? messages.filter(
         (msg) =>
+          // Messages directed to this mentor
           msg.recipient_id === user.id ||
-          msg.sender_id === user.id
+          // Messages sent by this mentor
+          msg.sender_id === user.id ||
+          // Messages with no specific recipient (broadcast or NULL)
+          !msg.recipient_id
       )
     : messages;
 
