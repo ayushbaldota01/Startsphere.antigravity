@@ -95,6 +95,12 @@ export const queryKeys = {
     thread: (messageId: string) => ['mentorMessages', 'thread', messageId] as const,
     unreadCount: (mentorId: string) => ['mentorMessages', 'unread', mentorId] as const,
   },
+  
+  // Project reports keys
+  projectReports: {
+    all: ['projectReports'] as const,
+    byProject: (projectId: string) => ['projectReports', 'project', projectId] as const,
+  },
 };
 
 // Helper to invalidate all project-related queries
@@ -105,6 +111,7 @@ export const invalidateProjectQueries = (projectId: string) => {
   queryClient.invalidateQueries({ queryKey: queryKeys.chat.messages(projectId) });
   queryClient.invalidateQueries({ queryKey: queryKeys.notes.byProject(projectId) });
   queryClient.invalidateQueries({ queryKey: queryKeys.files.byProject(projectId) });
+  queryClient.invalidateQueries({ queryKey: queryKeys.projectReports.byProject(projectId) });
 };
 
 // Helper to prefetch project detail

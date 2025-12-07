@@ -11,6 +11,7 @@ import { FileShelf } from '@/components/project/FileShelf';
 import { RequestMentorDialog } from '@/components/RequestMentorDialog';
 import { MentorNotifications } from '@/components/project/MentorNotifications';
 import { ConferenceRoomWithMentor } from '@/components/project/ConferenceRoomWithMentor';
+import { ProjectReport } from '@/components/project/ProjectReport';
 import { useProjects, useProjectDetail } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/use-toast';
@@ -18,7 +19,7 @@ import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { TeamWorkspace } from '@/components/workspace/TeamWorkspace';
 import { useEffect } from 'react';
-import { Layout, MoreVertical, Trash2, GraduationCap } from 'lucide-react';
+import { Layout, MoreVertical, Trash2, GraduationCap, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -187,6 +188,10 @@ const ProjectDetail = () => {
               {isMentor && <TabsTrigger value="mentor-notifications">Mentor Communications</TabsTrigger>}
               {!isMentor && <TabsTrigger value="notes">Scratch Pad</TabsTrigger>}
               <TabsTrigger value="files">File Shelf</TabsTrigger>
+              <TabsTrigger value="reports">
+                <FileText className="w-4 h-4 mr-2" />
+                Reports
+              </TabsTrigger>
               {!isMentor && <TabsTrigger value="workspace">Team Workspace</TabsTrigger>}
             </TabsList>
 
@@ -240,6 +245,15 @@ const ProjectDetail = () => {
 
             <TabsContent value="files">
               <FileShelf projectId={id!} readOnly={isReadOnly} />
+            </TabsContent>
+
+            <TabsContent value="reports">
+              <ProjectReport
+                projectId={id!}
+                project={project}
+                members={formattedMembers}
+                isAdmin={userRole === 'ADMIN' || !isMentor}
+              />
             </TabsContent>
           </Tabs>
         </main>
