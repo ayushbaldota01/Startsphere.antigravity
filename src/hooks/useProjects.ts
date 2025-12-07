@@ -101,14 +101,23 @@ const fetchProjectDetailFallback = async (
     .select('*, users(id, name, email, avatar_url, role)')
     .eq('project_id', projectId);
 
-  const formattedMembers = members?.map((m: any) => ({
-    id: m.users.id,
-    name: m.users.name,
-    email: m.users.email,
-    avatar_url: m.users.avatar_url,
-    role: m.role, // Project role
-    joined_at: m.joined_at
-  })) || [];
+  const formattedMembers = members
+    ?.filter((m: any) => {
+      // Filter out members with null/undefined user data (orphaned entries)
+      if (!m.users || !m.users.id) {
+        console.warn('Skipping member with missing user data:', m);
+        return false;
+      }
+      return true;
+    })
+    .map((m: any) => ({
+      id: m.users.id,
+      name: m.users.name,
+      email: m.users.email,
+      avatar_url: m.users.avatar_url,
+      role: m.role, // Project role
+      joined_at: m.joined_at
+    })) || [];
 
   // 4. Get task stats
   const { count: total } = await supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('project_id', projectId);
