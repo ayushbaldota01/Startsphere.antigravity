@@ -17,9 +17,8 @@ import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/use-toast';
 import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { TeamWorkspace } from '@/components/workspace/TeamWorkspace';
 import { useEffect } from 'react';
-import { Layout, MoreVertical, Trash2, GraduationCap, FileText } from 'lucide-react';
+import { MoreVertical, Trash2, GraduationCap, FileText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -192,21 +191,7 @@ const ProjectDetail = () => {
                 <FileText className="w-4 h-4 mr-2" />
                 Reports
               </TabsTrigger>
-              {!isMentor && <TabsTrigger value="workspace">Team Workspace</TabsTrigger>}
             </TabsList>
-
-            <TabsContent value="workspace" className="h-[calc(100vh-12rem)]">
-              <div className="flex flex-col items-center justify-center h-full border-2 border-dashed rounded-lg bg-muted/10">
-                <div className="p-4 rounded-full bg-primary/10 mb-4">
-                  <Layout className="w-8 h-8 text-primary opacity-50" />
-                </div>
-                <h3 className="text-2xl font-bold mb-2">Team Workspace</h3>
-                <p className="text-muted-foreground mb-6">This feature is coming soon!</p>
-                <div className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm font-medium">
-                  Under Development
-                </div>
-              </div>
-            </TabsContent>
 
             <TabsContent value="overview">
               <OfficeOverview

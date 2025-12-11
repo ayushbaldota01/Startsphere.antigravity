@@ -7,12 +7,97 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables');
 }
 
+// Storage configuration ------------------------------------------------------
+const AUTH_STORAGE_KEY = 'startsphere.auth.token';
+
+type StorageLike = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
+const inMemoryStorage = (): StorageLike => {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => store.set(key, value),
+    removeItem: (key) => { store.delete(key); }
+  };
+};
+
+const getBrowserStorage = (type: 'local' | 'session'): StorageLike | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const storage = type === 'local' ? window.localStorage : window.sessionStorage;
+    const testKey = '__sb_storage_test__';
+    storage.setItem(testKey, '1');
+    storage.removeItem(testKey);
+    return storage;
+  } catch {
+    return null;
+  }
+};
+
+const pickInitialStorage = (): StorageLike => {
+  const local = getBrowserStorage('local');
+  const session = getBrowserStorage('session');
+  const sessionHasToken = session?.getItem(AUTH_STORAGE_KEY);
+  const localHasToken = local?.getItem(AUTH_STORAGE_KEY);
+
+  if (sessionHasToken && !localHasToken && session) return session;
+  if (localHasToken && local) return local;
+  if (session) return session;
+  if (local) return local;
+  return inMemoryStorage();
+};
+
+let selectedStorage: StorageLike = pickInitialStorage();
+
+export const setAuthStorage = (useSessionStorage: boolean) => {
+  selectedStorage =
+    getBrowserStorage(useSessionStorage ? 'session' : 'local') ??
+    inMemoryStorage();
+};
+
+export const clearAuthStorage = () => {
+  const storages = [getBrowserStorage('local'), getBrowserStorage('session')];
+  storages.forEach((store) => {
+    try {
+      store?.removeItem(AUTH_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  });
+};
+
+const storageAdapter: StorageLike = {
+  getItem: (key) => {
+    try {
+      return selectedStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      selectedStorage.setItem(key, value);
+    } catch {
+      // ignore write errors (storage full/blocked)
+    }
+  },
+  removeItem: (key) => {
+    try {
+      selectedStorage.removeItem(key);
+    } catch {
+      // ignore
+    }
+  },
+};
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,
-    persistSession: false, // DISABLED per user request to force login on load
+    persistSession: true, // Keep users logged in across reloads
     detectSessionInUrl: false, // Disable URL session detection
     flowType: 'pkce',
+    storage: storageAdapter,
+    storageKey: AUTH_STORAGE_KEY,
   },
   global: {
     fetch: (url, options) => {

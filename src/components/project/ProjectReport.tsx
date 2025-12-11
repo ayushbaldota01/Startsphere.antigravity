@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectReport, CreateReportData } from '@/hooks/useProjectReport';
 import { ReportPreview } from './ReportPreview';
 import { SimpleTextEditor } from './SimpleTextEditor';
-import { TestEditor } from './TestEditor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,7 +40,6 @@ export const ProjectReport = ({
   members,
   isAdmin,
 }: ProjectReportProps) => {
-  console.log('[ProjectReport] isAdmin:', isAdmin, 'projectId:', projectId);
   const { toast } = useToast();
   const {
     report,
@@ -98,13 +96,13 @@ export const ProjectReport = ({
       const prefilled = prefillFromProject(project, members, []);
       setFormData(prefilled);
     }
-  }, [report, project, members, prefillFromProject]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [report?.id, project?.id, members?.length]);
 
   const handleInputChange = (
     field: keyof CreateReportData,
     value: any
   ) => {
-    console.log('[ProjectReport] Field changed:', field, 'value length:', value?.length || 0);
     setFormData((prev) => ({
       ...prev,
       [field]: value,
@@ -180,9 +178,6 @@ export const ProjectReport = ({
 
   return (
     <div className="space-y-6">
-      {/* DEBUG: Test Editor */}
-      <TestEditor />
-      
       {/* Header */}
       <Card>
         <CardHeader>

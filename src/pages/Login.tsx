@@ -11,6 +11,7 @@ import { GraduationCap } from 'lucide-react';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const { toast } = useToast();
@@ -20,7 +21,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       toast({
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
@@ -76,6 +77,19 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <input
+                  id="remember-me"
+                  type="checkbox"
+                  className="h-4 w-4 accent-primary"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                />
+                <Label htmlFor="remember-me" className="font-normal">
+                  Remember me
+                </Label>
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

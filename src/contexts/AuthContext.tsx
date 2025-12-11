@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, type User } from '@/lib/supabase';
+import { supabase, type User, setAuthStorage, clearAuthStorage } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 
 // Session storage key for caching profile
@@ -14,7 +14,7 @@ interface CachedProfile {
 interface AuthContextType {
   user: User | null;
   session: Session | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (email: string, password: string, name: string, role: 'student' | 'mentor') => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -238,7 +238,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       console.log('[AuthContext] Initializing...');
       try {
-        // Since persistence is disabled, this will likely return null on reload
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
@@ -250,7 +249,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (session) {
           await handleSession(session);
         } else {
-          // No session found (expected behavior now)
+          // No session found (user not logged in)
           console.log('[AuthContext] No session found, user must login');
           setSession(null);
           setUser(null);
@@ -299,8 +298,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [fetchUserProfile]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe = true) => {
     try {
+      // Configure storage before sign-in based on "Remember me" selection
+      clearAuthStorage();
+      setAuthStorage(!rememberMe);
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -322,6 +325,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const register = async (email: string, password: string, name: string, role: 'student' | 'mentor') => {
     try {
       console.log('[AuthContext] Registering user with role:', role);
+      // Default new registrations to persistent sessions
+      clearAuthStorage();
+      setAuthStorage(false);
       
       // Step 1: Sign up the user with metadata
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -385,6 +391,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Clear cache
       if (userId) clearCachedProfile(userId);
+      clearAuthStorage();
 
       setUser(null);
       setSession(null);
