@@ -77,13 +77,14 @@ export function CommandPalette() {
                 <User className="h-4 w-4" />
                 <span>Profile</span>
               </Command.Item>
-              <Command.Item
+              {/* Temporarily removed portfolio route */}
+              {/* <Command.Item
                 onSelect={() => runCommand(() => navigate('/profile/portfolio'))}
                 className="flex items-center gap-2 rounded-md px-2 py-2 text-sm cursor-pointer hover:bg-accent"
               >
                 <Briefcase className="h-4 w-4" />
                 <span>Portfolio</span>
-              </Command.Item>
+              </Command.Item> */}
               {user?.role === 'mentor' && (
                 <Command.Item
                   onSelect={() => runCommand(() => navigate('/reports'))}

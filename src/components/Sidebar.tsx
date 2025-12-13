@@ -190,7 +190,7 @@ export const Sidebar = () => {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/profile') || isActive('/profile/portfolio')}>
+            <SidebarMenuButton asChild isActive={isActive('/profile')}>
               <NavLink to="/profile" activeClassName="bg-accent text-accent-foreground font-medium">
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}

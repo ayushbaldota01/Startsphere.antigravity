@@ -96,7 +96,8 @@ const App = () => (
                       </ProtectedRoute>
                     } 
                   />
-                  <Route 
+                  {/* Temporarily removed public portfolio route */}
+                  {/* <Route 
                     path="/profile/portfolio" 
                     element={
                       <ProtectedRoute>
@@ -107,7 +108,7 @@ const App = () => (
                         </SidebarProvider>
                       </ProtectedRoute>
                     } 
-                  />
+                  /> */}
                   <Route 
                     path="/reports" 
                     element={
