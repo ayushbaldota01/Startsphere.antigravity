@@ -1,3 +1,4 @@
+import React, { useMemo } from 'react';
 import { Sidebar } from '@/components/Sidebar';
 import { ProjectCard } from '@/components/ProjectCard';
 import { SidebarTrigger } from '@/components/ui/sidebar';
@@ -13,6 +14,9 @@ import { motion } from 'framer-motion';
 const Dashboard = () => {
   const { user } = useAuth();
   const { projects, isLoading } = useProjects();
+
+  // Memoize projects list to prevent unnecessary re-renders
+  const memoizedProjects = useMemo(() => projects, [projects]);
 
   return (
     <>
@@ -95,7 +99,7 @@ const Dashboard = () => {
                 },
               }}
             >
-              {projects.map((project) => (
+              {memoizedProjects.map((project) => (
                 <div key={project.id}>
                   <ProjectCard
                     id={project.id}

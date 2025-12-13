@@ -111,8 +111,7 @@ const ProjectDetail = () => {
       role: m.project_role || m.role, // This is the project role (ADMIN/MEMBER/MENTOR)
     })) || [];
 
-  console.log('[ProjectDetail] All members:', members);
-  console.log('[ProjectDetail] Filtered mentors for messaging:', projectMentors);
+  // Removed console.logs for production performance
 
   if (isLoading) {
     return (

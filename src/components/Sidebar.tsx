@@ -1,9 +1,11 @@
+import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProjects } from '@/hooks/useProjects';
 import { useMentorProjects } from '@/hooks/useMentorProjects';
 import { useMentorRequests } from '@/hooks/useMentorRequests';
 import { useMentorUnreadCount } from '@/hooks/useMentorMessages';
+import { logger } from '@/lib/logger';
 import { NavLink } from '@/components/NavLink';
 import { Home, FolderKanban, User, LogOut, BarChart3, ChevronRight, GraduationCap, Bell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -31,8 +33,8 @@ export const Sidebar = () => {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
 
-  // Debug logging
-  console.log('[Sidebar] User state:', {
+  // Debug logging (only in development)
+  logger.debug('[Sidebar] User state:', {
     hasUser: !!user,
     userId: user?.id,
     userName: user?.name,
@@ -44,9 +46,15 @@ export const Sidebar = () => {
   const { requests: mentorRequests } = useMentorRequests();
   const { totalUnread: mentorUnreadMessages } = useMentorUnreadCount();
 
-  // Use appropriate projects based on role
-  const userProjects = user?.role === 'mentor' ? mentorProjects : studentProjects;
-  const pendingRequestsCount = user?.role === 'mentor' ? mentorRequests.length : 0;
+  // Memoize user projects to prevent unnecessary re-renders
+  const userProjects = React.useMemo(
+    () => user?.role === 'mentor' ? mentorProjects : studentProjects,
+    [user?.role, mentorProjects, studentProjects]
+  );
+  const pendingRequestsCount = React.useMemo(
+    () => user?.role === 'mentor' ? mentorRequests.length : 0,
+    [user?.role, mentorRequests.length]
+  );
 
   // Map projects with colors
   const colors = ['bg-blue-500', 'bg-purple-500', 'bg-green-500', 'bg-orange-500', 'bg-pink-500', 'bg-cyan-500'];

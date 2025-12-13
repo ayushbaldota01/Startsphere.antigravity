@@ -101,10 +101,14 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
   global: {
     fetch: (url, options) => {
+      // Increase timeout for storage operations (large file uploads)
+      // Use 5 minutes for storage, 30s for other operations
+      const isStorageOperation = url.includes('/storage/v1/object/') || url.includes('/storage/v1/upload');
+      const timeout = isStorageOperation ? 300000 : 30000; // 5 min for storage, 30s for others
+      
       return fetch(url, {
         ...options,
-        // Increase timeout to 30s for slow connections
-        signal: AbortSignal.timeout(30000),
+        signal: AbortSignal.timeout(timeout),
       });
     },
   },

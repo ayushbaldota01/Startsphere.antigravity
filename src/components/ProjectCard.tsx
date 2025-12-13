@@ -1,9 +1,11 @@
+import React, { useCallback } from 'react';
 import { Calendar, Users, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { useAuth } from '@/contexts/AuthContext';
+import { prefetchProjectDetail } from '@/lib/prefetch';
 
 interface ProjectCardProps {
   id: string;
@@ -15,8 +17,9 @@ interface ProjectCardProps {
   status: 'active' | 'completed' | 'pending';
 }
 
-export const ProjectCard = ({ id, title, description, progress, dueDate, members, status }: ProjectCardProps) => {
+export const ProjectCard = React.memo(({ id, title, description, progress, dueDate, members, status }: ProjectCardProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const statusColors = {
     active: 'bg-blue-500 text-white',
@@ -24,10 +27,22 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
     pending: 'bg-amber-500 text-white',
   };
 
+  const handleClick = useCallback(() => {
+    navigate(`/project/${id}`);
+  }, [navigate, id]);
+
+  const handleMouseEnter = useCallback(() => {
+    // Prefetch project data on hover for instant navigation
+    if (user?.id) {
+      prefetchProjectDetail(id, user.id);
+    }
+  }, [id, user?.id]);
+
   return (
     <Card
       className="h-full cursor-pointer border-2 hover:border-primary/50 transition-all duration-300 hover:shadow-xl overflow-hidden group relative"
-      onClick={() => navigate(`/project/${id}`)}
+      onClick={handleClick}
+      onMouseEnter={handleMouseEnter}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
@@ -72,4 +87,4 @@ export const ProjectCard = ({ id, title, description, progress, dueDate, members
       </CardContent>
     </Card>
   );
-};
+});

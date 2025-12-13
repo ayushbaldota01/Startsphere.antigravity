@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, type User, setAuthStorage, clearAuthStorage } from '@/lib/supabase';
 import type { Session } from '@supabase/supabase-js';
+import { logger } from '@/lib/logger';
 
 // Session storage key for caching profile
 const PROFILE_CACHE_KEY = 'startsphere-profile-cache';
@@ -89,14 +90,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (useCache) {
       const cachedUser = getCachedProfile(userId);
       if (cachedUser) {
-        console.log('[AuthContext] Using cached profile');
+        logger.debug('[AuthContext] Using cached profile');
         return cachedUser;
       }
     }
 
     const fetchWithRetry = async (retries = 3, delay = 1000): Promise<User | null> => {
       try {
-        console.log(`[AuthContext] Fetching profile from database (attempts left: ${retries})`);
+        logger.debug(`[AuthContext] Fetching profile from database (attempts left: ${retries})`);
 
         // Create a promise that rejects after 10 seconds
         const timeoutPromise = new Promise((_, reject) => {
@@ -114,7 +115,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         ]) as any;
 
         if (error) {
-          console.error('[AuthContext] Error fetching profile:', error.message);
+          logger.error('[AuthContext] Error fetching profile:', error.message);
           if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, delay));
             return fetchWithRetry(retries - 1, delay * 1.5);
@@ -125,13 +126,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (data) {
           // Cache the profile
           setCachedProfile(data as User);
-          console.log('[AuthContext] Profile fetched and cached');
+          logger.debug('[AuthContext] Profile fetched and cached');
           return data as User;
         }
 
         return null;
       } catch (error: any) {
-        console.error('[AuthContext] Exception fetching profile:', error);
+        logger.error('[AuthContext] Exception fetching profile:', error);
 
         if (retries > 0) {
           await new Promise(resolve => setTimeout(resolve, delay));
@@ -154,7 +155,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       // Prevent concurrent handling
       if (initLock) {
-        console.log('[AuthContext] Session handling locked, skipping');
+        logger.debug('[AuthContext] Session handling locked, skipping');
         return;
       }
       initLock = true;
@@ -166,24 +167,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           // Try cache first for instant load
           const cachedUser = getCachedProfile(currentSession.user.id);
           if (cachedUser) {
-            console.log('[AuthContext] Using cached profile for instant load');
+            logger.debug('[AuthContext] Using cached profile for instant load');
             setUser(cachedUser);
             setIsLoading(false);
 
-            // Refresh in background
+            // Refresh in background (non-blocking)
             fetchUserProfile(currentSession.user.id, false).then(freshProfile => {
               if (mounted && freshProfile) {
-                if (JSON.stringify(freshProfile) !== JSON.stringify(cachedUser)) {
+                // Only update if data actually changed (avoid unnecessary re-renders)
+                const cachedStr = JSON.stringify(cachedUser);
+                const freshStr = JSON.stringify(freshProfile);
+                if (cachedStr !== freshStr) {
                   setUser(freshProfile);
                 }
               }
+            }).catch(() => {
+              // Silently fail background refresh - cached data is fine
             });
           } else {
             // OPTIMIZATION: Use session metadata for immediate UI rendering
             // This prevents the "delay" the user is seeing
             const metadata = currentSession.user.user_metadata;
             if (metadata && metadata.name) {
-              console.log('[AuthContext] Hydrating from session metadata for instant load');
+              logger.debug('[AuthContext] Hydrating from session metadata for instant load');
               const tempUser: User = {
                 id: currentSession.user.id,
                 email: currentSession.user.email!,
@@ -196,11 +202,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
               setUser(tempUser);
               setIsLoading(false); // UNBLOCK UI IMMEDIATELY
 
-              // Fetch full profile in background
+              // Fetch full profile in background (non-blocking)
               fetchUserProfile(currentSession.user.id, false).then(profile => {
                 if (mounted && profile) {
                   setUser(profile);
                 }
+              }).catch(() => {
+                // Silently fail - temp user is fine for now
               });
             } else {
               // Fallback to blocking load if no metadata (rare)
@@ -224,7 +232,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('[AuthContext] Error handling session:', error);
+        logger.error('[AuthContext] Error handling session:', error);
         if (mounted) setIsLoading(false);
       } finally {
         initLock = false;
@@ -236,12 +244,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (initLock) return;
       initLock = true;
 
-      console.log('[AuthContext] Initializing...');
+      logger.debug('[AuthContext] Initializing...');
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
 
         if (error) {
-          console.error('[AuthContext] Error getting session:', error);
+          logger.error('[AuthContext] Error getting session:', error);
           if (mounted) setIsLoading(false);
           return;
         }
@@ -257,7 +265,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setIsLoading(false);
         }
       } catch (err) {
-        console.error('[AuthContext] Initialization error:', err);
+        logger.error('[AuthContext] Initialization error:', err);
         if (mounted) setIsLoading(false);
       } finally {
         initLock = false;
@@ -270,7 +278,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('[AuthContext] Auth state changed:', event);
+      logger.debug('[AuthContext] Auth state changed:', event);
 
       if (!mounted) return;
 
@@ -317,14 +325,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('Login failed:', error);
+      logger.error('Login failed:', error);
       throw error;
     }
   };
 
   const register = async (email: string, password: string, name: string, role: 'student' | 'mentor') => {
     try {
-      console.log('[AuthContext] Registering user with role:', role);
+      logger.debug('[AuthContext] Registering user with role:', role);
       // Default new registrations to persistent sessions
       clearAuthStorage();
       setAuthStorage(false);
@@ -344,7 +352,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (authError) throw authError;
       if (!authData.user) throw new Error('User creation failed');
 
-      console.log('[AuthContext] User created in auth.users, waiting for trigger...');
+      logger.debug('[AuthContext] User created in auth.users, waiting for trigger...');
 
       // Step 2: Wait for the trigger to create the profile (increased wait time)
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -352,15 +360,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Step 3: Fetch the complete profile (with retry and increased attempts)
       let profile: User | null = null;
       for (let i = 0; i < 5; i++) {
-        console.log(`[AuthContext] Attempting to fetch profile, attempt ${i + 1}/5`);
+        logger.debug(`[AuthContext] Attempting to fetch profile, attempt ${i + 1}/5`);
         profile = await fetchUserProfile(authData.user.id, false);
         
         if (profile) {
-          console.log('[AuthContext] Profile fetched successfully:', profile);
+          logger.debug('[AuthContext] Profile fetched successfully');
           
           // Verify the role matches what was requested
           if (profile.role !== role) {
-            console.warn('[AuthContext] Role mismatch! Expected:', role, 'Got:', profile.role);
+            logger.warn('[AuthContext] Role mismatch! Expected:', role, 'Got:', profile.role);
           }
           
           break;
@@ -370,15 +378,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (profile) {
         setUser(profile);
-        console.log('[AuthContext] Navigating to dashboard with role:', profile.role);
+        logger.debug('[AuthContext] Navigating to dashboard');
         navigate('/dashboard');
       } else {
-        console.warn('[AuthContext] Profile not found after retries, navigating anyway');
+        logger.warn('[AuthContext] Profile not found after retries, navigating anyway');
         // Still navigate - profile will be fetched on next load
         navigate('/dashboard');
       }
     } catch (error) {
-      console.error('[AuthContext] Registration failed:', error);
+      logger.error('[AuthContext] Registration failed:', error);
       throw error;
     }
   };
@@ -397,7 +405,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null);
       navigate('/login');
     } catch (error) {
-      console.error('Logout failed:', error);
+      logger.error('Logout failed:', error);
       throw error;
     }
   };
@@ -411,17 +419,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Memoize context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    user,
+    session,
+    login,
+    register,
+    logout,
+    isLoading,
+    isProfileLoading,
+    refreshUser
+  }), [user, session, isLoading, isProfileLoading]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      session,
-      login,
-      register,
-      logout,
-      isLoading,
-      isProfileLoading,
-      refreshUser
-    }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

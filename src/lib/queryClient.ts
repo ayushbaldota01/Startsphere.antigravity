@@ -1,30 +1,32 @@
 import { QueryClient } from '@tanstack/react-query';
 
-// Configure React Query with optimized caching settings
+// Configure React Query with optimized caching settings for performance
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Data is considered fresh for 2 minutes (increased from default 0)
-      staleTime: 2 * 60 * 1000,
-      // Keep unused data in cache for 15 minutes
-      gcTime: 15 * 60 * 1000,
+      // Data is considered fresh for 5 minutes (longer cache for faster loads)
+      staleTime: 5 * 60 * 1000,
+      // Keep unused data in cache for 30 minutes (longer for better UX)
+      gcTime: 30 * 60 * 1000,
       // Retry failed requests 2 times with exponential backoff
       retry: 2,
       retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Only refetch on window focus if data is stale
-      refetchOnWindowFocus: 'always', // Changed to 'always' but combined with staleTime means it only fetches if stale
+      // Only refetch on window focus if data is stale (better performance)
+      refetchOnWindowFocus: false, // Disabled for better performance on refresh
       // Don't refetch on reconnect automatically unless data is stale
-      refetchOnReconnect: 'always',
-      // Network mode
-      networkMode: 'offlineFirst',
+      refetchOnReconnect: true,
+      // Network mode - use cached data first
+      networkMode: 'online',
       // Deduplicate requests
       structuralSharing: true,
+      // Placeholder data for instant renders
+      placeholderData: (previousData) => previousData,
     },
     mutations: {
       // Retry mutations once
       retry: 1,
       // Network mode
-      networkMode: 'offlineFirst',
+      networkMode: 'online',
     },
   },
 });

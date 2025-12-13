@@ -52,6 +52,8 @@ export const useFiles = (projectId: string | undefined) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({});
+  const [uploadStatus, setUploadStatus] = useState<{ [key: string]: string }>({});
 
   // Main files query
   const {
@@ -107,42 +109,209 @@ export const useFiles = (projectId: string | undefined) => {
     mutationFn: async ({
       file,
       userId,
+      originalFileName,
+      onProgress,
     }: {
       file: File;
       userId: string;
+      originalFileName?: string;
+      onProgress?: (progress: number) => void;
     }) => {
       if (!projectId) throw new Error('No project ID');
 
-      // Upload file to storage
-      const fileExt = file.name.split('.').pop();
+      // Preserve original file name and metadata
+      const originalName = originalFileName || file.name;
+      const originalMimeType = file.type;
+
+      // File is already optimized by FileShelf component before calling uploadFile
+      // No need to compress again here
+      const optimizedFile = file;
+      const optimizedSize = file.size;
+
+      // Upload optimized file to storage
+      const fileExt = optimizedFile.name.split('.').pop() || originalName.split('.').pop() || 'file';
       const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${projectId}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('project-files')
-        .upload(filePath, file);
+      // Create a unique key for this upload
+      const uploadKey = `${filePath}-${Date.now()}`;
+      
+      // Set initial status
+      setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Uploading...' }));
+      setUploadProgress(prev => ({ ...prev, [uploadKey]: 0 }));
 
-      if (uploadError) throw uploadError;
+      // For large files, use upsert with cacheControl and better error handling
+      const fileSizeMB = optimizedFile.size / (1024 * 1024);
+      const isLargeFile = fileSizeMB > 20;
 
-      // Save file metadata to database
-      const { data, error: dbError } = await supabase
+      try {
+        // Use upload with progress tracking
+        const uploadOptions: any = {
+          cacheControl: '3600',
+          upsert: false,
+        };
+
+        // Use Supabase client with progress simulation for better reliability
+        // Simulate progress during upload
+        const progressInterval = setInterval(() => {
+          setUploadProgress(prev => {
+            const current = prev[uploadKey] || 0;
+            if (current < 90) {
+              const newProgress = Math.min(current + 5, 90);
+              if (onProgress) onProgress(newProgress);
+              return { ...prev, [uploadKey]: newProgress };
+            }
+            return prev;
+          });
+        }, 200);
+
+        try {
+          // Upload using Supabase client (more reliable)
+          const { data: uploadData, error: uploadError } = await supabase.storage
+            .from('project-files')
+            .upload(filePath, optimizedFile, {
+              cacheControl: '3600',
+              upsert: false,
+            });
+
+          clearInterval(progressInterval);
+
+          if (uploadError) {
+            // Check if file already exists
+            if (uploadError.message?.includes('already exists') || uploadError.message?.includes('duplicate')) {
+              // Try with upsert
+              setUploadStatus(prev => ({ ...prev, [uploadKey]: 'File exists, updating...' }));
+              const { error: upsertError } = await supabase.storage
+                .from('project-files')
+                .update(filePath, optimizedFile, {
+                  cacheControl: '3600',
+                  upsert: true,
+                });
+
+              if (upsertError) {
+                throw new Error(upsertError.message || 'Failed to upload file');
+              }
+            } else {
+              throw new Error(uploadError.message || 'Failed to upload file');
+            }
+          }
+
+          // Set to 95% after upload, 100% after metadata save
+          setUploadProgress(prev => ({ ...prev, [uploadKey]: 95 }));
+          if (onProgress) onProgress(95);
+          setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Upload complete, saving metadata...' }));
+        } catch (uploadErr: any) {
+          clearInterval(progressInterval);
+          setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Upload failed' }));
+          throw uploadErr;
+        }
+
+        setUploadProgress(prev => ({ ...prev, [uploadKey]: 100 }));
+        setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Saving metadata...' }));
+      } catch (uploadError: any) {
+        setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Upload failed' }));
+        // Clean up progress on upload error
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[uploadKey];
+            return newProgress;
+          });
+          setUploadStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[uploadKey];
+            return newStatus;
+          });
+        }, 2000);
+        throw uploadError;
+      }
+
+      // Save file metadata to database (preserve original name and type)
+      setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Saving metadata...' }));
+      
+      // Add timeout for metadata save to prevent hanging
+      const metadataSavePromise = supabase
         .from('files')
         .insert([
           {
             project_id: projectId,
-            file_name: file.name,
+            file_name: originalName, // Preserve original file name
             file_path: filePath,
-            file_size: file.size,
-            mime_type: file.type,
+            file_size: optimizedSize, // Store optimized size
+            mime_type: originalMimeType, // Preserve original MIME type
             uploaded_by: userId,
           },
         ])
         .select()
         .single();
 
-      if (dbError) throw dbError;
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Metadata save timeout')), 10000); // 10 second timeout
+      });
 
-      return data;
+      try {
+        const { data, error: dbError } = await Promise.race([
+          metadataSavePromise,
+          timeoutPromise,
+        ]) as any;
+
+        if (dbError) {
+          console.error('[FileUpload] Database error:', dbError);
+          setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Metadata save failed' }));
+          // Clean up after showing error
+          setTimeout(() => {
+            setUploadProgress(prev => {
+              const newProgress = { ...prev };
+              delete newProgress[uploadKey];
+              return newProgress;
+            });
+            setUploadStatus(prev => {
+              const newStatus = { ...prev };
+              delete newStatus[uploadKey];
+              return newStatus;
+            });
+          }, 2000);
+          throw new Error(dbError.message || 'Failed to save file metadata');
+        }
+
+        // Success - update to 100% and clean up
+        setUploadProgress(prev => ({ ...prev, [uploadKey]: 100 }));
+        if (onProgress) onProgress(100);
+        setUploadStatus(prev => ({ ...prev, [uploadKey]: 'Complete!' }));
+        
+        // Clean up progress tracking after brief delay
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[uploadKey];
+            return newProgress;
+          });
+          setUploadStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[uploadKey];
+            return newStatus;
+          });
+        }, 500);
+
+        return data;
+      } catch (dbError: any) {
+        // Clean up progress even if metadata save fails
+        console.error('[FileUpload] Metadata save error:', dbError);
+        setUploadStatus(prev => ({ ...prev, [uploadKey]: dbError.message?.includes('timeout') ? 'Metadata save timeout' : 'Metadata save failed' }));
+        setTimeout(() => {
+          setUploadProgress(prev => {
+            const newProgress = { ...prev };
+            delete newProgress[uploadKey];
+            return newProgress;
+          });
+          setUploadStatus(prev => {
+            const newStatus = { ...prev };
+            delete newStatus[uploadKey];
+            return newStatus;
+          });
+        }, 2000);
+        throw dbError;
+      }
     },
     onMutate: () => {
       setIsUploading(true);
@@ -274,8 +443,8 @@ export const useFiles = (projectId: string | undefined) => {
   };
 
   // Legacy API compatibility
-  const uploadFile = async (file: File, userId: string) => {
-    return uploadFileMutation.mutateAsync({ file, userId });
+  const uploadFile = async (file: File, userId: string, originalFileName?: string, onProgress?: (progress: number) => void) => {
+    return uploadFileMutation.mutateAsync({ file, userId, originalFileName, onProgress });
   };
 
   const deleteFile = async (fileId: string, filePath: string) => {
@@ -293,5 +462,7 @@ export const useFiles = (projectId: string | undefined) => {
     formatFileSize,
     uploadFileMutation,
     deleteFileMutation,
+    uploadProgress,
+    uploadStatus,
   };
 };

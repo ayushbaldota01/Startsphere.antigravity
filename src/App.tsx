@@ -10,7 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { CommandPalette } from "@/components/command-palette";
 import { queryClient } from "@/lib/queryClient";
-import { lazy, Suspense } from "react";
+import React, { lazy, Suspense } from "react";
 
 // Lazy load pages for better performance
 const Login = lazy(() => import("./pages/Login"));
@@ -34,20 +34,16 @@ const PageLoader = () => (
 );
 
 // Component to route to correct dashboard based on role
-const DashboardRouter = () => {
+// Memoized to prevent unnecessary re-renders
+const DashboardRouter = React.memo(() => {
   const { user } = useAuth();
   
-  // Debug logging
-  console.log('[DashboardRouter] User role:', user?.role, 'User:', user);
-  
   if (user?.role === 'mentor') {
-    console.log('[DashboardRouter] Routing to MentorDashboard');
     return <MentorDashboard />;
   }
   
-  console.log('[DashboardRouter] Routing to Student Dashboard');
   return <Dashboard />;
-};
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
