@@ -10,6 +10,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { CommandPalette } from "@/components/command-palette";
 import { queryClient } from "@/lib/queryClient";
+import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import React, { lazy, Suspense } from "react";
 
 // Lazy load pages for better performance
@@ -37,11 +38,11 @@ const PageLoader = () => (
 // Memoized to prevent unnecessary re-renders
 const DashboardRouter = React.memo(() => {
   const { user } = useAuth();
-  
+
   if (user?.role === 'mentor') {
     return <MentorDashboard />;
   }
-  
+
   return <Dashboard />;
 });
 
@@ -60,67 +61,21 @@ const App = () => (
                   <Route path="/" element={<Navigate to="/dashboard" replace />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/register" element={<Register />} />
-                  <Route 
-                    path="/dashboard" 
+
+                  {/* Dashboard Routes with Layout */}
+                  <Route
                     element={
                       <ProtectedRoute>
-                        <SidebarProvider>
-                          <div className="flex min-h-screen w-full">
-                            <DashboardRouter />
-                          </div>
-                        </SidebarProvider>
+                        <DashboardLayout />
                       </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/project/:id" 
-                    element={
-                      <ProtectedRoute>
-                        <SidebarProvider>
-                          <div className="flex min-h-screen w-full">
-                            <ProjectDetail />
-                          </div>
-                        </SidebarProvider>
-                      </ProtectedRoute>
-                    } 
-                  />
-                  <Route 
-                    path="/profile" 
-                    element={
-                      <ProtectedRoute>
-                        <SidebarProvider>
-                          <div className="flex min-h-screen w-full">
-                            <Profile />
-                          </div>
-                        </SidebarProvider>
-                      </ProtectedRoute>
-                    } 
-                  />
-                  {/* Temporarily removed public portfolio route */}
-                  {/* <Route 
-                    path="/profile/portfolio" 
-                    element={
-                      <ProtectedRoute>
-                        <SidebarProvider>
-                          <div className="flex min-h-screen w-full">
-                            <Portfolio />
-                          </div>
-                        </SidebarProvider>
-                      </ProtectedRoute>
-                    } 
-                  /> */}
-                  <Route 
-                    path="/reports" 
-                    element={
-                      <ProtectedRoute>
-                        <SidebarProvider>
-                          <div className="flex min-h-screen w-full">
-                            <Reports />
-                          </div>
-                        </SidebarProvider>
-                      </ProtectedRoute>
-                    } 
-                  />
+                    }
+                  >
+                    <Route path="/dashboard" element={<DashboardRouter />} />
+                    <Route path="/project/:id" element={<ProjectDetail />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/reports" element={<Reports />} />
+                  </Route>
+
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </Suspense>

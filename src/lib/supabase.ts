@@ -105,7 +105,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       // Use 5 minutes for storage, 30s for other operations
       const isStorageOperation = url.includes('/storage/v1/object/') || url.includes('/storage/v1/upload');
       const timeout = isStorageOperation ? 300000 : 30000; // 5 min for storage, 30s for others
-      
+
       return fetch(url, {
         ...options,
         signal: AbortSignal.timeout(timeout),
@@ -126,6 +126,8 @@ export interface User {
   bio?: string;
   avatar_url?: string;
   role: 'student' | 'mentor';
+  tier?: 'FREE' | 'PRO';
+  max_projects?: number;
   university?: string;
   major?: string;
   created_at: string;
@@ -207,6 +209,3 @@ export interface Portfolio {
   created_at: string;
   updated_at: string;
 }
-
-
-
