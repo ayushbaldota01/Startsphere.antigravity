@@ -94,7 +94,7 @@ export const UpgradeDialog = ({ children }: UpgradeDialogProps) => {
                             <Label htmlFor="promo-code">Enter Promo Code</Label>
                             <Input
                                 id="promo-code"
-                                placeholder="e.g., BALLI200"
+                                placeholder=""
                                 value={code}
                                 onChange={(e) => setCode(e.target.value.toUpperCase())}
                                 className="font-mono"
