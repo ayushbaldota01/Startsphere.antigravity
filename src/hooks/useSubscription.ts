@@ -70,7 +70,7 @@ export const useSubscription = () => {
             tier: 'FREE',
             max_projects: 3,
             current_projects: 0,
-            can_create: true,
+            can_create: false,
         },
         isLoading,
         isPro: limits?.tier === 'PRO',

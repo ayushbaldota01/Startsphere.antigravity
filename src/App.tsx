@@ -21,6 +21,7 @@ const MentorDashboard = lazy(() => import("./pages/MentorDashboard"));
 const ProjectDetail = lazy(() => import("./pages/ProjectDetail"));
 const Profile = lazy(() => import("./pages/Profile"));
 const Portfolio = lazy(() => import("./pages/Portfolio"));
+const PublicPortfolio = lazy(() => import("./pages/PublicPortfolio"));
 const Reports = lazy(() => import("./pages/Reports"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
@@ -73,8 +74,12 @@ const App = () => (
                     <Route path="/dashboard" element={<DashboardRouter />} />
                     <Route path="/project/:id" element={<ProjectDetail />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/portfolio" element={<Portfolio />} />
                     <Route path="/reports" element={<Reports />} />
                   </Route>
+
+                  {/* Public Portfolio Route (no auth required) */}
+                  <Route path="/u/:identifier" element={<PublicPortfolio />} />
 
                   <Route path="*" element={<NotFound />} />
                 </Routes>

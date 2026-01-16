@@ -4,31 +4,67 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { queryKeys } from '@/lib/queryClient';
 
+// Enhanced types for portfolio data
+export interface PortfolioSkill {
+  id: string;
+  category: string;
+  skills: string[];
+  display_order: number;
+}
+
+export interface PortfolioExperience {
+  id: string;
+  role: string;
+  company: string;
+  period: string;
+  description: string;
+  achievements?: string[];
+  is_current?: boolean;
+  display_order: number;
+}
+
+export interface PortfolioEducation {
+  id: string;
+  degree: string;
+  institution: string;
+  period: string;
+  gpa: string | null;
+  description?: string;
+  display_order: number;
+}
+
+export interface PortfolioProject {
+  id: string;
+  source_project_id?: string;
+  title: string;
+  description: string;
+  technologies: string[];
+  github_url: string | null;
+  demo_url: string | null;
+  image_url?: string | null;
+  status: string;
+  featured: boolean;
+  display_order: number;
+}
+
+export interface PortfolioCertification {
+  id: string;
+  name: string;
+  issuer: string;
+  issue_date?: string;
+  credential_url?: string;
+  display_order: number;
+}
+
 export interface PortfolioData extends Portfolio {
-  skills: Array<{ id: string; category: string; skills: string[] }>;
-  experience: Array<{
-    id: string;
-    role: string;
-    company: string;
-    period: string;
-    description: string;
-  }>;
-  education: Array<{
-    id: string;
-    degree: string;
-    institution: string;
-    period: string;
-    gpa: string | null;
-  }>;
-  projects: Array<{
-    id: string;
-    title: string;
-    description: string;
-    technologies: string[];
-    github_url: string | null;
-    demo_url: string | null;
-    status: string;
-  }>;
+  is_public?: boolean;
+  slug?: string;
+  theme?: string;
+  skills: PortfolioSkill[];
+  experience: PortfolioExperience[];
+  education: PortfolioEducation[];
+  projects: PortfolioProject[];
+  certifications?: PortfolioCertification[];
 }
 
 // Fetch portfolio using the optimized view
@@ -60,7 +96,24 @@ const fetchPortfolioComplete = async (
     experience: data.experience || [],
     education: data.education || [],
     projects: data.projects || [],
+    certifications: data.certifications || [],
   } as PortfolioData;
+};
+
+// Fetch portfolio by slug or user ID (for public access)
+export const fetchPortfolioPublic = async (
+  identifier: string
+): Promise<PortfolioData | null> => {
+  const { data, error } = await supabase.rpc('get_portfolio', {
+    identifier,
+  });
+
+  if (error) {
+    console.error('Error fetching public portfolio:', error);
+    return null;
+  }
+
+  return data as PortfolioData | null;
 };
 
 // Fallback fetch without view (multiple queries in parallel)
@@ -83,24 +136,34 @@ const fetchPortfolioFallback = async (
   }
 
   // Fetch related data in parallel
-  const [skillsResult, experienceResult, educationResult, projectsResult] =
+  const [skillsResult, experienceResult, educationResult, projectsResult, certificationsResult] =
     await Promise.all([
       supabase
         .from('portfolio_skills')
         .select('*')
-        .eq('portfolio_id', portfolioData.id),
+        .eq('portfolio_id', portfolioData.id)
+        .order('display_order'),
       supabase
         .from('portfolio_experience')
         .select('*')
-        .eq('portfolio_id', portfolioData.id),
+        .eq('portfolio_id', portfolioData.id)
+        .order('display_order'),
       supabase
         .from('portfolio_education')
         .select('*')
-        .eq('portfolio_id', portfolioData.id),
+        .eq('portfolio_id', portfolioData.id)
+        .order('display_order'),
       supabase
         .from('portfolio_projects')
         .select('*')
-        .eq('portfolio_id', portfolioData.id),
+        .eq('portfolio_id', portfolioData.id)
+        .order('featured', { ascending: false })
+        .order('display_order'),
+      supabase
+        .from('portfolio_certifications')
+        .select('*')
+        .eq('portfolio_id', portfolioData.id)
+        .order('display_order'),
     ]);
 
   return {
@@ -109,6 +172,7 @@ const fetchPortfolioFallback = async (
     experience: experienceResult.data || [],
     education: educationResult.data || [],
     projects: projectsResult.data || [],
+    certifications: certificationsResult.data || [],
   } as PortfolioData;
 };
 
@@ -118,6 +182,7 @@ export const usePortfolio = (userId?: string) => {
   const queryClient = useQueryClient();
 
   const targetUserId = userId || user?.id;
+  const isOwner = user?.id === targetUserId;
 
   // Main portfolio query
   const {
@@ -144,6 +209,8 @@ export const usePortfolio = (userId?: string) => {
       github_url?: string;
       linkedin_url?: string;
       website_url?: string;
+      is_public?: boolean;
+      theme?: string;
     }) => {
       if (!user) throw new Error('Not authenticated');
 
@@ -151,26 +218,35 @@ export const usePortfolio = (userId?: string) => {
         // Update existing portfolio
         const { error } = await supabase
           .from('portfolios')
-          .update(data)
+          .update({ ...data, updated_at: new Date().toISOString() })
           .eq('id', portfolio.id);
 
         if (error) throw error;
+        return portfolio;
       } else {
         // Create new portfolio
-        const { error } = await supabase.from('portfolios').insert([
-          {
-            user_id: user.id,
-            ...data,
-          },
-        ]);
+        const { data: newPortfolio, error } = await supabase
+          .from('portfolios')
+          .insert([
+            {
+              user_id: user.id,
+              ...data,
+            },
+          ])
+          .select()
+          .single();
 
         if (error) throw error;
+        return newPortfolio;
       }
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
+    onSuccess: async () => {
+      // Invalidate and refetch the portfolio
+      await queryClient.invalidateQueries({
         queryKey: queryKeys.portfolio.byUser(targetUserId || ''),
       });
+      // Force a refetch
+      await refetch();
       toast({
         title: 'Success',
         description: 'Portfolio updated successfully!',
@@ -180,7 +256,7 @@ export const usePortfolio = (userId?: string) => {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to update portfolio.',
+        description: err.message || 'Failed to update portfolio.',
       });
     },
   });
@@ -283,6 +359,8 @@ export const usePortfolio = (userId?: string) => {
       company: string;
       period: string;
       description: string;
+      achievements?: string[];
+      is_current?: boolean;
     }) => {
       if (!portfolio) throw new Error('No portfolio');
 
@@ -374,6 +452,7 @@ export const usePortfolio = (userId?: string) => {
       institution: string;
       period: string;
       gpa?: string;
+      description?: string;
     }) => {
       if (!portfolio) throw new Error('No portfolio');
 
@@ -458,7 +537,7 @@ export const usePortfolio = (userId?: string) => {
     },
   });
 
-  // Add project mutation
+  // Add project mutation (enhanced with source_project_id)
   const addProjectMutation = useMutation({
     mutationFn: async (data: {
       title: string;
@@ -466,7 +545,10 @@ export const usePortfolio = (userId?: string) => {
       technologies: string[];
       github_url?: string;
       demo_url?: string;
+      image_url?: string;
       status: string;
+      featured?: boolean;
+      source_project_id?: string;
     }) => {
       if (!portfolio) throw new Error('No portfolio');
 
@@ -485,7 +567,7 @@ export const usePortfolio = (userId?: string) => {
       });
       toast({
         title: 'Success',
-        description: 'Project added successfully!',
+        description: 'Project added to portfolio!',
       });
     },
     onError: () => {
@@ -493,6 +575,40 @@ export const usePortfolio = (userId?: string) => {
         variant: 'destructive',
         title: 'Error',
         description: 'Failed to add project.',
+      });
+    },
+  });
+
+  // Update project mutation
+  const updateProjectMutation = useMutation({
+    mutationFn: async ({
+      projectId,
+      data,
+    }: {
+      projectId: string;
+      data: Partial<PortfolioProject>;
+    }) => {
+      const { error } = await supabase
+        .from('portfolio_projects')
+        .update({ ...data, updated_at: new Date().toISOString() })
+        .eq('id', projectId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.portfolio.byUser(targetUserId || ''),
+      });
+      toast({
+        title: 'Success',
+        description: 'Project updated successfully!',
+      });
+    },
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to update project.',
       });
     },
   });
@@ -546,10 +662,81 @@ export const usePortfolio = (userId?: string) => {
     onSuccess: () => {
       toast({
         title: 'Success',
-        description: 'Project deleted successfully!',
+        description: 'Project removed from portfolio!',
       });
     },
   });
+
+  // Add certification mutation
+  const addCertificationMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      issuer: string;
+      issue_date?: string;
+      credential_url?: string;
+    }) => {
+      if (!portfolio) throw new Error('No portfolio');
+
+      const { error } = await supabase.from('portfolio_certifications').insert([
+        {
+          portfolio_id: portfolio.id,
+          ...data,
+        },
+      ]);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.portfolio.byUser(targetUserId || ''),
+      });
+      toast({
+        title: 'Success',
+        description: 'Certification added successfully!',
+      });
+    },
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to add certification.',
+      });
+    },
+  });
+
+  // Delete certification mutation
+  const deleteCertificationMutation = useMutation({
+    mutationFn: async (certificationId: string) => {
+      const { error } = await supabase
+        .from('portfolio_certifications')
+        .delete()
+        .eq('id', certificationId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.portfolio.byUser(targetUserId || ''),
+      });
+      toast({
+        title: 'Success',
+        description: 'Certification deleted successfully!',
+      });
+    },
+    onError: () => {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to delete certification.',
+      });
+    },
+  });
+
+  // Check if a project is already in portfolio
+  const isProjectInPortfolio = (sourceProjectId: string): boolean => {
+    if (!portfolio?.projects) return false;
+    return portfolio.projects.some((p) => p.source_project_id === sourceProjectId);
+  };
 
   // Legacy API compatibility functions
   const createOrUpdatePortfolio = async (data: {
@@ -560,6 +747,8 @@ export const usePortfolio = (userId?: string) => {
     github_url?: string;
     linkedin_url?: string;
     website_url?: string;
+    is_public?: boolean;
+    slug?: string;
   }) => {
     return upsertPortfolioMutation.mutateAsync(data);
   };
@@ -577,6 +766,8 @@ export const usePortfolio = (userId?: string) => {
     company: string;
     period: string;
     description: string;
+    achievements?: string[];
+    is_current?: boolean;
   }) => {
     return addExperienceMutation.mutateAsync(data);
   };
@@ -590,6 +781,7 @@ export const usePortfolio = (userId?: string) => {
     institution: string;
     period: string;
     gpa?: string;
+    description?: string;
   }) => {
     return addEducationMutation.mutateAsync(data);
   };
@@ -604,28 +796,82 @@ export const usePortfolio = (userId?: string) => {
     technologies: string[];
     github_url?: string;
     demo_url?: string;
+    image_url?: string;
     status: string;
+    featured?: boolean;
+    source_project_id?: string;
   }) => {
     return addProjectMutation.mutateAsync(data);
+  };
+
+  const updateProject = async (projectId: string, data: Partial<PortfolioProject>) => {
+    return updateProjectMutation.mutateAsync({ projectId, data });
   };
 
   const deleteProject = async (projectId: string) => {
     return deleteProjectMutation.mutateAsync(projectId);
   };
 
+  const addCertification = async (data: {
+    name: string;
+    issuer: string;
+    issue_date?: string;
+    credential_url?: string;
+  }) => {
+    return addCertificationMutation.mutateAsync(data);
+  };
+
+  const deleteCertification = async (certificationId: string) => {
+    return deleteCertificationMutation.mutateAsync(certificationId);
+  };
+
   return {
     portfolio,
     isLoading,
+    error,
     hasPortfolio,
+    isOwner,
+    // Portfolio CRUD
     createOrUpdatePortfolio,
+    isUpdatingPortfolio: upsertPortfolioMutation.isPending,
+    // Skills
     addSkill,
     deleteSkill,
+    // Experience
     addExperience,
     deleteExperience,
+    // Education
     addEducation,
     deleteEducation,
+    // Projects
     addProject,
+    updateProject,
     deleteProject,
+    isProjectInPortfolio,
+    // Certifications
+    addCertification,
+    deleteCertification,
+    // Refresh
     refreshPortfolio: refetch,
+  };
+};
+
+// Hook for public portfolio viewing
+export const usePublicPortfolio = (identifier: string) => {
+  const {
+    data: portfolio,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ['portfolio', 'public', identifier],
+    queryFn: () => fetchPortfolioPublic(identifier),
+    enabled: !!identifier,
+    staleTime: 10 * 60 * 1000, // 10 minutes for public views
+  });
+
+  return {
+    portfolio,
+    isLoading,
+    error,
   };
 };

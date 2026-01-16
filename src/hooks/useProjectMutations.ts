@@ -61,10 +61,12 @@ export const useProjectMutations = () => {
 
     const addMemberMutation = useMutation({
         mutationFn: async ({ projectId, email, role = 'MEMBER' }: { projectId: string; email: string; role?: 'ADMIN' | 'MEMBER' }) => {
+            // Use RPC to bypass RLS and find user
             const { data: userData, error: userError } = await supabase
-                .from('users').select('id').eq('email', email).single();
+                .rpc('get_user_id_by_email', { email_input: email });
 
-            if (userError || !userData) throw new Error('User not found.');
+            if (userError) throw userError;
+            if (!userData) throw new Error('User not found.');
 
             const { error } = await supabase
                 .from('project_members')

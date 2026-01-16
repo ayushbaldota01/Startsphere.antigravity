@@ -11,13 +11,14 @@ import { RequestMentorDialog } from '@/components/RequestMentorDialog';
 import { MentorNotifications } from '@/components/project/MentorNotifications';
 import { ConferenceRoomWithMentor } from '@/components/project/ConferenceRoomWithMentor';
 import { ProjectReport } from '@/components/project/ProjectReport';
+import { AddToPortfolioDialog } from '@/components/project/AddToPortfolioDialog';
 import { useProjects, useProjectDetail } from '@/hooks/useProjects';
 import { useTasks } from '@/hooks/useTasks';
 import { useToast } from '@/hooks/use-toast';
 import { AddMemberDialog } from '@/components/AddMemberDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEffect } from 'react';
-import { MoreVertical, Trash2, GraduationCap, FileText } from 'lucide-react';
+import { MoreVertical, Trash2, GraduationCap, FileText, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -79,13 +80,13 @@ const ProjectDetail = () => {
 
   const handleAddMember = async (email: string, role: 'ADMIN' | 'MEMBER') => {
     if (!id) return;
-    await addMember(id, email, role);
+    await addMember({ projectId: id, email, role });
     // React Query will automatically refetch due to invalidation
   };
 
   const handleRemoveMember = async (userId: string) => {
     if (!id) return;
-    await removeMember(id, userId);
+    await removeMember({ projectId: id, userId });
     // React Query will automatically refetch due to invalidation
   };
 
@@ -145,6 +146,7 @@ const ProjectDetail = () => {
         </div>
         {userRole === 'ADMIN' && !isMentor && (
           <div className="flex items-center gap-2">
+            <AddToPortfolioDialog project={{ id: id!, name: project.name, description: project.description, domain: project.domain }} />
             <RequestMentorDialog projectId={id!} />
             <AddMemberDialog projectId={id!} onAddMember={handleAddMember} />
             <DropdownMenu>

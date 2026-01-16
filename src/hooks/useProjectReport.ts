@@ -28,6 +28,11 @@ export interface ProjectReport {
     url: string;
     type: string;
   }>;
+  custom_sections?: Array<{
+    id: string;
+    title: string;
+    content: string;
+  }>;
   created_by: string;
   created_at: string;
   updated_at: string;
@@ -55,6 +60,11 @@ export interface CreateReportData {
     name: string;
     url: string;
     type: string;
+  }>;
+  custom_sections?: Array<{
+    id: string;
+    title: string;
+    content: string;
   }>;
 }
 

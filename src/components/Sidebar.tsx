@@ -7,7 +7,7 @@ import { useMentorRequests } from '@/hooks/useMentorRequests';
 import { useMentorUnreadCount } from '@/hooks/useMentorMessages';
 import { logger } from '@/lib/logger';
 import { NavLink } from '@/components/NavLink';
-import { Home, FolderKanban, User, LogOut, BarChart3, ChevronRight, GraduationCap, Bell } from 'lucide-react';
+import { Home, FolderKanban, User, LogOut, BarChart3, ChevronRight, GraduationCap, Bell, Briefcase } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   Sidebar as ShadcnSidebar,
@@ -99,6 +99,17 @@ export const Sidebar = () => {
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {user?.role !== 'mentor' && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={isActive('/portfolio')}>
+                    <NavLink to="/portfolio" activeClassName="bg-accent text-accent-foreground font-medium">
+                      <Briefcase className="w-4 h-4" />
+                      {!collapsed && <span>Portfolio</span>}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {user?.role === 'mentor' && !collapsed && (
                 <>

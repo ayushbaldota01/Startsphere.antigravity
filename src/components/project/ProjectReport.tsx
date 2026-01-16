@@ -90,6 +90,7 @@ export const ProjectReport = ({
         tech_stack: report.tech_stack || [],
         outcomes: report.outcomes || '',
         file_references: report.file_references || [],
+        custom_sections: report.custom_sections || [],
       });
     } else if (project) {
       // Prefill from project data
@@ -462,6 +463,82 @@ export const ProjectReport = ({
                 />
               </CardContent>
             </Card>
+
+            {/* Custom Sections */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Custom Sections</h3>
+                <Button
+                  onClick={() => {
+                    setFormData(prev => ({
+                      ...prev,
+                      custom_sections: [
+                        ...(prev.custom_sections || []),
+                        { id: crypto.randomUUID(), title: 'New Section', content: '' }
+                      ]
+                    }))
+                  }}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Section
+                </Button>
+              </div>
+
+              {formData.custom_sections?.map((section, index) => (
+                <Card key={section.id} className="relative group">
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-4">
+                      <div className="flex-1">
+                        <Label className="sr-only">Section Title</Label>
+                        <Input
+                          value={section.title}
+                          onChange={(e) => {
+                            const newSections = [...(formData.custom_sections || [])];
+                            newSections[index].title = e.target.value;
+                            setFormData(prev => ({ ...prev, custom_sections: newSections }));
+                          }}
+                          className="font-semibold text-lg border-transparent hover:border-input focus:border-input px-0 h-auto py-1"
+                          placeholder="Section Title"
+                        />
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => {
+                          const newSections = (formData.custom_sections || []).filter((_, i) => i !== index);
+                          setFormData(prev => ({ ...prev, custom_sections: newSections }));
+                        }}
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <SimpleTextEditor
+                      value={section.content}
+                      onChange={(value) => {
+                        const newSections = [...(formData.custom_sections || [])];
+                        newSections[index].content = value;
+                        setFormData(prev => ({ ...prev, custom_sections: newSections }));
+                      }}
+                      placeholder="Enter section content..."
+                      disabled={false}
+                      minHeight="200px"
+                    />
+                  </CardContent>
+                </Card>
+              ))}
+
+              {(!formData.custom_sections || formData.custom_sections.length === 0) && (
+                <p className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
+                  Add custom sections to tailor the report to your specific needs.
+                </p>
+              )}
+            </div>
+
           </motion.div>
         ) : (
           <motion.div
@@ -513,7 +590,7 @@ export const ProjectReport = ({
           </AlertDescription>
         </Alert>
       )}
-      
+
       {/* Editing hint for admins */}
       {isAdmin && mode === 'edit' && !report && (
         <Alert>
