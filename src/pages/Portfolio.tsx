@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePortfolio } from '@/hooks/usePortfolio';
+import { useProjects } from '@/hooks/useProjects';
 import { useToast } from '@/hooks/use-toast';
 import {
   ExternalLink, Award, MapPin, Briefcase, GraduationCap,
@@ -33,8 +34,10 @@ const Portfolio = () => {
   const {
     portfolio, isLoading, hasPortfolio, createOrUpdatePortfolio, isUpdatingPortfolio,
     addSkill, deleteSkill, addExperience, deleteExperience, addEducation, deleteEducation,
-    addProject, deleteProject, addCertification, deleteCertification,
+    addProject, deleteProject, addCertification, deleteCertification, isProjectInPortfolio
   } = usePortfolio();
+
+  const { projects: dashboardProjects } = useProjects();
 
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -295,7 +298,11 @@ const Portfolio = () => {
                     </div>
                     Flagship Projects
                   </CardTitle>
-                  <AddProjectDialog onAdd={addProject} />
+                  <AddProjectDialog
+                    onAdd={addProject}
+                    dashboardProjects={dashboardProjects}
+                    isProjectInPortfolio={isProjectInPortfolio}
+                  />
                 </CardHeader>
                 <CardContent className="pt-8 grid grid-cols-1 md:grid-cols-1 gap-6">
                   {portfolio?.projects && portfolio.projects.length > 0 ? (
@@ -591,26 +598,98 @@ function AddCertificationDialog({ onAdd }: { onAdd: (data: any) => Promise<void>
   );
 }
 
-function AddProjectDialog({ onAdd }: { onAdd: (data: any) => Promise<void> }) {
+function AddProjectDialog({
+  onAdd,
+  dashboardProjects = [],
+  isProjectInPortfolio
+}: {
+  onAdd: (data: any) => Promise<void>;
+  dashboardProjects?: any[];
+  isProjectInPortfolio?: (id: string) => boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const importableProjects = dashboardProjects.filter(p => isProjectInPortfolio ? !isProjectInPortfolio(p.id) : true);
+
   const handleSubmit = async () => {
     if (!title.trim() || !description.trim()) return;
     setIsSubmitting(true);
     try { await onAdd({ title, description, technologies: [] }); setOpen(false); setTitle(''); setDescription(''); } finally { setIsSubmitting(false); }
   };
+
+  const handleImport = async (project: any) => {
+    setIsSubmitting(true);
+    try {
+      await onAdd({
+        title: project.name,
+        description: project.description || `A project built on StartSphere.`,
+        technologies: [],
+        source_project_id: project.id
+      });
+      setOpen(false);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild><Button variant="outline">Add Project</Button></DialogTrigger>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Add Project</DialogTitle><DialogDescription>Add a project to your showcase.</DialogDescription></DialogHeader>
-        <div className="space-y-4 py-4">
-          <Input placeholder="Project Name" value={title} onChange={(e) => setTitle(e.target.value)} />
-          <Textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-black">Add Project</DialogTitle>
+          <DialogDescription>Import from your dashboard or add manually.</DialogDescription>
+        </DialogHeader>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-6">
+          {/* Manual Entry */}
+          <div className="space-y-6">
+            <h4 className="text-sm font-black uppercase tracking-widest text-primary">Manual Entry</h4>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Project Name</Label>
+                <Input placeholder="Enter title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Description</Label>
+                <Textarea placeholder="What did you build?" value={description} onChange={(e) => setDescription(e.target.value)} rows={4} />
+              </div>
+              <Button onClick={handleSubmit} disabled={isSubmitting} className="w-full">
+                Create Project
+              </Button>
+            </div>
+          </div>
+
+          {/* Import List */}
+          <div className="space-y-6">
+            <h4 className="text-sm font-black uppercase tracking-widest text-primary">Import from Dashboard</h4>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+              {importableProjects.length > 0 ? (
+                importableProjects.map((project) => (
+                  <button
+                    key={project.id}
+                    onClick={() => handleImport(project)}
+                    disabled={isSubmitting}
+                    className="w-full text-left p-4 rounded-2xl border border-primary/5 bg-primary/5 hover:bg-primary/10 hover:border-primary/20 transition-all flex items-center justify-between group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-bold truncate">{project.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{project.description || 'No description'}</p>
+                    </div>
+                    <Plus className="w-4 h-4 text-primary opacity-0 group-hover:opacity-100 transition-all ml-2" />
+                  </button>
+                ))
+              ) : (
+                <div className="text-center py-8 rounded-2xl border-2 border-dashed border-primary/5">
+                  <p className="text-xs text-muted-foreground">No new projects to import.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <DialogFooter><Button onClick={handleSubmit} disabled={isSubmitting}>Add Project</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

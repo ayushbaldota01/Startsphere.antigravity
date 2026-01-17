@@ -71,7 +71,7 @@ export const Sidebar = () => {
     <ShadcnSidebar collapsible="icon">
       <SidebarContent>
         {/* Header */}
-        <div className="p-4 border-b">
+        <div className={collapsed ? "py-4 border-b flex justify-center" : "p-4 border-b"}>
           {!collapsed && (
             <div>
               <h1 className="text-xl font-bold text-primary">StartSphere</h1>
@@ -79,10 +79,8 @@ export const Sidebar = () => {
             </div>
           )}
           {collapsed && (
-            <div className="flex items-center justify-center">
-              <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
-                S
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-lg shadow-primary/20">
+              S
             </div>
           )}
         </div>
@@ -96,10 +94,10 @@ export const Sidebar = () => {
                   asChild
                   isActive={isActive('/dashboard')}
                   tooltip="Dashboard"
-                  className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+                  className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center h-12"
                 >
                   <NavLink to="/dashboard" activeClassName="bg-accent text-accent-foreground font-medium">
-                    <Home className="w-5 h-5 shrink-0" />
+                    <Home className="w-6 h-6 shrink-0" />
                     {!collapsed && <span className="ml-3">Dashboard</span>}
                   </NavLink>
                 </SidebarMenuButton>
@@ -111,10 +109,10 @@ export const Sidebar = () => {
                     asChild
                     isActive={isActive('/portfolio')}
                     tooltip="Portfolio"
-                    className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+                    className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center h-12"
                   >
                     <NavLink to="/portfolio" activeClassName="bg-accent text-accent-foreground font-medium">
-                      <Briefcase className="w-5 h-5 shrink-0" />
+                      <Briefcase className="w-6 h-6 shrink-0" />
                       {!collapsed && <span className="ml-3">Portfolio</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -215,10 +213,10 @@ export const Sidebar = () => {
               asChild
               isActive={isActive('/profile')}
               size="lg"
-              className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+              className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center h-14"
             >
               <NavLink to="/profile" activeClassName="bg-accent text-accent-foreground font-medium">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0 shadow-lg shadow-primary/20">
+                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg shrink-0 shadow-lg shadow-primary/20">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 {!collapsed && (
