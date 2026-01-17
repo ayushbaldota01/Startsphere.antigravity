@@ -96,11 +96,11 @@ export const Sidebar = () => {
                   asChild
                   isActive={isActive('/dashboard')}
                   tooltip="Dashboard"
-                  className="group-data-[collapsible=icon]:justify-center"
+                  className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                 >
                   <NavLink to="/dashboard" activeClassName="bg-accent text-accent-foreground font-medium">
-                    <Home className="w-4 h-4" />
-                    {!collapsed && <span>Dashboard</span>}
+                    <Home className="w-5 h-5 shrink-0" />
+                    {!collapsed && <span className="ml-3">Dashboard</span>}
                   </NavLink>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -111,11 +111,11 @@ export const Sidebar = () => {
                     asChild
                     isActive={isActive('/portfolio')}
                     tooltip="Portfolio"
-                    className="group-data-[collapsible=icon]:justify-center"
+                    className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
                   >
                     <NavLink to="/portfolio" activeClassName="bg-accent text-accent-foreground font-medium">
-                      <Briefcase className="w-4 h-4" />
-                      {!collapsed && <span>Portfolio</span>}
+                      <Briefcase className="w-5 h-5 shrink-0" />
+                      {!collapsed && <span className="ml-3">Portfolio</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -125,8 +125,8 @@ export const Sidebar = () => {
                 <>
                   {pendingRequestsCount > 0 && (
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <div className="relative flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-primary/10 text-primary cursor-default">
+                      <SidebarMenuButton asChild className="px-3">
+                        <div className="relative flex items-center gap-3 py-2 text-sm rounded-lg bg-primary/10 text-primary cursor-default">
                           <Bell className="w-4 h-4" />
                           <span className="flex-1">Pending Requests</span>
                           <Badge variant="default" className="h-5 min-w-[1.25rem] px-1 text-xs">
@@ -138,8 +138,8 @@ export const Sidebar = () => {
                   )}
                   {mentorUnreadMessages > 0 && (
                     <SidebarMenuItem>
-                      <SidebarMenuButton asChild>
-                        <div className="relative flex items-center gap-2 px-3 py-2 text-sm rounded-lg bg-blue-500/10 text-blue-600 cursor-default">
+                      <SidebarMenuButton asChild className="px-3">
+                        <div className="relative flex items-center gap-3 py-2 text-sm rounded-lg bg-blue-500/10 text-blue-600 cursor-default">
                           <Bell className="w-4 h-4" />
                           <span className="flex-1">Unread Messages</span>
                           <Badge variant="default" className="h-5 min-w-[1.25rem] px-1 text-xs bg-blue-600">
