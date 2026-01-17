@@ -92,7 +92,12 @@ export const Sidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/dashboard')}>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isActive('/dashboard')}
+                  tooltip="Dashboard"
+                  className="group-data-[collapsible=icon]:justify-center"
+                >
                   <NavLink to="/dashboard" activeClassName="bg-accent text-accent-foreground font-medium">
                     <Home className="w-4 h-4" />
                     {!collapsed && <span>Dashboard</span>}
@@ -102,7 +107,12 @@ export const Sidebar = () => {
 
               {user?.role !== 'mentor' && (
                 <SidebarMenuItem>
-                  <SidebarMenuButton asChild isActive={isActive('/portfolio')}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive('/portfolio')}
+                    tooltip="Portfolio"
+                    className="group-data-[collapsible=icon]:justify-center"
+                  >
                     <NavLink to="/portfolio" activeClassName="bg-accent text-accent-foreground font-medium">
                       <Briefcase className="w-4 h-4" />
                       {!collapsed && <span>Portfolio</span>}
@@ -201,17 +211,22 @@ export const Sidebar = () => {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton asChild isActive={isActive('/profile')}>
+            <SidebarMenuButton
+              asChild
+              isActive={isActive('/profile')}
+              size="lg"
+              className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center"
+            >
               <NavLink to="/profile" activeClassName="bg-accent text-accent-foreground font-medium">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0 shadow-lg shadow-primary/20">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 {!collapsed && (
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                  <div className="flex-1 min-w-0 ml-3">
+                    <p className="text-sm font-bold truncate">
                       {user?.name || 'Loading...'}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate">
+                    <p className="text-[10px] uppercase tracking-wider text-muted-foreground truncate">
                       {user?.role || 'User'}
                     </p>
                   </div>
@@ -222,7 +237,7 @@ export const Sidebar = () => {
 
           {!collapsed && (
             <SidebarMenuItem>
-              <SidebarMenuButton onClick={logout}>
+              <SidebarMenuButton onClick={logout} className="text-destructive hover:text-destructive hover:bg-destructive/10">
                 <LogOut className="w-4 h-4" />
                 <span>Logout</span>
               </SidebarMenuButton>

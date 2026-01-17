@@ -137,183 +137,192 @@ const Portfolio = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-background">
-      <header className="relative z-10 h-14 flex items-center justify-between border-b px-4 bg-background/80 backdrop-blur-xl sticky top-0">
+      <header className="relative z-50 h-14 flex items-center justify-between border-b px-4 bg-background/80 backdrop-blur-xl sticky top-0">
         <div className="flex items-center gap-2">
           <SidebarTrigger />
           <h1 className="text-lg font-bold text-foreground flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-primary" />
-            Creator Dashboard
+            <div className="p-1 rounded-lg bg-primary/10">
+              <Sparkles className="w-4 h-4 text-primary" />
+            </div>
+            Portfolio Dashboard
           </h1>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={copyPublicUrl}>
+          <Button variant="outline" size="sm" onClick={copyPublicUrl} className="rounded-full bg-background/50 backdrop-blur-sm border-primary/20 hover:border-primary/50">
             {copied ? <Check className="w-4 h-4 mr-2 text-green-500" /> : <Copy className="w-4 h-4 mr-2" />}
             {copied ? 'Copied' : 'Share Link'}
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => window.open(`/u/${user?.id}`, '_blank')}>
+          <Button variant="default" size="sm" onClick={() => window.open(`/u/${user?.id}`, '_blank')} className="rounded-full shadow-lg shadow-primary/20">
             <Eye className="w-4 h-4 mr-2" />
-            Preview
+            Live Preview
           </Button>
         </div>
       </header>
 
-      <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+      <main className="relative z-10 flex-1 overflow-y-auto p-4 md:p-8 bg-gradient-to-br from-background via-background to-muted/20">
+        {/* Animated Background Element */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-purple-500/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero Card */}
-          <Card className="overflow-hidden">
-            <div className="relative p-6 md:p-10">
-              <div className="flex flex-col md:flex-row items-center md:items-center gap-8 text-center md:text-left">
+          <Card className="overflow-hidden border-primary/10 bg-card/50 backdrop-blur-2xl shadow-2xl relative">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-purple-500 to-pink-500 opacity-50" />
+            <div className="relative p-8 md:p-12">
+              <div className="flex flex-col md:flex-row items-center gap-10">
                 <div className="relative group">
-                  <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full p-1 bg-gradient-to-tr from-primary via-purple-500 to-pink-500">
+                  <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl group-hover:bg-primary/30 transition-all" />
+                  <div className="relative w-36 h-36 md:w-44 md:h-44 rounded-full p-1.5 bg-gradient-to-tr from-primary via-purple-500 to-pink-500 ring-4 ring-background/50">
                     <Avatar className="w-full h-full border-4 border-background shadow-2xl">
-                      <AvatarFallback className="text-5xl bg-background text-foreground font-black">
+                      <AvatarFallback className="text-5xl bg-gradient-to-br from-card to-muted text-foreground font-black">
                         {(portfolio?.display_name || user?.name)?.charAt(0).toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
                   </div>
                 </div>
-                <div className="flex-1 space-y-3">
-                  <div className="space-y-1">
-                    <h1 className="text-4xl md:text-6xl font-black text-foreground tracking-tight">
+                <div className="flex-1 space-y-4 text-center md:text-left">
+                  <div className="space-y-2">
+                    <h1 className="text-5xl md:text-7xl font-black text-foreground tracking-tight leading-none bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
                       {portfolio?.display_name || user?.name}
                     </h1>
                     {portfolio?.title ? (
-                      <p className="text-xl md:text-2xl text-primary font-bold flex items-center justify-center md:justify-start gap-2">
-                        <Sparkles className="w-5 h-5" />
+                      <p className="text-2xl md:text-3xl text-primary font-bold flex items-center justify-center md:justify-start gap-3">
+                        <Rocket className="w-6 h-6" />
                         {portfolio.title}
                       </p>
                     ) : (
-                      <p className="text-muted-foreground text-lg">Set your professional title</p>
+                      <p className="text-muted-foreground text-xl font-medium">Set your professional title</p>
                     )}
                   </div>
-                  <div className="flex flex-wrap justify-center md:justify-start gap-3">
+                  <div className="flex flex-wrap justify-center md:justify-start gap-4">
                     {portfolio?.location && (
-                      <Badge variant="outline" className="px-4 py-1.5 rounded-full">
-                        <MapPin className="w-3.5 h-3.5 mr-2 text-primary" />
+                      <Badge variant="outline" className="px-5 py-2 rounded-full border-primary/20 bg-primary/5 backdrop-blur-sm text-foreground/80 font-medium">
+                        <MapPin className="w-4 h-4 mr-2 text-primary" />
                         {portfolio.location}
                       </Badge>
                     )}
-                    <Badge variant={portfolio?.is_public ? "default" : "secondary"} className="px-4 py-1.5 rounded-full">
-                      {portfolio?.is_public ? <Globe className="w-3 h-3 mr-2" /> : <Eye className="w-3 h-3 mr-2" />}
-                      {portfolio?.is_public ? 'Active Portfolio' : 'Private Mode'}
+                    <Badge variant={portfolio?.is_public ? "default" : "secondary"} className="px-5 py-2 rounded-full shadow-lg shadow-primary/10">
+                      {portfolio?.is_public ? <Globe className="w-4 h-4 mr-2" /> : <Eye className="w-4 h-4 mr-2" />}
+                      {portfolio?.is_public ? 'Portfolio Live' : 'Private Draft'}
                     </Badge>
                   </div>
                 </div>
-                <Button variant="outline" onClick={() => setIsEditing(true)} className="rounded-full px-6">
+                <Button variant="outline" onClick={() => setIsEditing(true)} className="rounded-2xl px-8 h-12 border-primary/20 bg-background/50 hover:bg-primary hover:text-white transition-all">
                   <Pencil className="w-4 h-4 mr-2" />
-                  Edit Profile
+                  Edit Layout
                 </Button>
               </div>
             </div>
           </Card>
 
           {/* Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column */}
-            <div className="lg:col-span-2 space-y-6">
+            <div className="lg:col-span-2 space-y-8">
               {/* About */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-primary/10">
-                      <Award className="w-5 h-5 text-primary" />
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="pb-4 border-b border-primary/5">
+                  <CardTitle className="flex items-center gap-4 text-2xl">
+                    <div className="p-3 rounded-2xl bg-primary/10 text-primary">
+                      <Award className="w-6 h-6" />
                     </div>
                     The Narrative
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   {portfolio?.bio ? (
-                    <p className="text-muted-foreground text-lg leading-relaxed whitespace-pre-wrap">{portfolio.bio}</p>
+                    <p className="text-muted-foreground text-xl leading-relaxed whitespace-pre-wrap font-medium">{portfolio.bio}</p>
                   ) : (
-                    <div className="p-8 text-center border border-dashed rounded-xl">
-                      <p className="text-muted-foreground">Your professional story goes here.</p>
+                    <div className="p-12 text-center border-2 border-dashed border-primary/10 rounded-3xl bg-primary/5">
+                      <p className="text-muted-foreground font-medium">Your professional story goes here. Tell the world who you are.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Experience */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-6">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-emerald-500/10">
-                      <Briefcase className="w-5 h-5 text-emerald-500" />
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-6 border-b border-primary/5">
+                  <CardTitle className="flex items-center gap-4 text-2xl">
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-500">
+                      <Briefcase className="w-6 h-6" />
                     </div>
                     Professional Journey
                   </CardTitle>
                   <AddExperienceDialog onAdd={addExperience} />
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="pt-8 space-y-8">
                   {portfolio?.experience && portfolio.experience.length > 0 ? (
-                    portfolio.experience.map((exp) => (
-                      <div key={exp.id} className="relative group p-4 rounded-xl hover:bg-muted/50 transition-all">
-                        <div className="flex flex-col md:flex-row justify-between gap-4">
-                          <div className="space-y-2">
-                            <h4 className="text-xl font-bold text-foreground flex items-center gap-2">
+                    portfolio.experience.map((exp, idx) => (
+                      <div key={exp.id} className="relative group p-6 rounded-3xl border border-transparent hover:border-primary/10 hover:bg-primary/5 transition-all duration-300">
+                        <div className="flex flex-col md:flex-row justify-between gap-6">
+                          <div className="space-y-3">
+                            <h4 className="text-2xl font-black text-foreground flex items-center gap-3">
                               {exp.role}
-                              {exp.is_current && <Badge className="text-[10px] uppercase px-2 py-0">Active</Badge>}
+                              {exp.is_current && <Badge className="bg-emerald-500 text-white border-0 text-[10px] px-3 py-1 uppercase tracking-tighter shadow-lg shadow-emerald-500/20">Current</Badge>}
                             </h4>
-                            <p className="text-muted-foreground font-semibold">{exp.company}</p>
-                            {exp.description && <p className="text-muted-foreground mt-2 text-sm">{exp.description}</p>}
+                            <p className="text-primary font-bold text-lg">{exp.company}</p>
+                            {exp.description && <p className="text-muted-foreground/80 mt-3 text-base leading-relaxed max-w-2xl">{exp.description}</p>}
                           </div>
-                          <div className="flex flex-col md:items-end gap-3 shrink-0">
-                            <Badge variant="outline" className="px-3 py-1 text-xs">
-                              <Calendar className="w-3 h-3 mr-2" />
+                          <div className="flex flex-col md:items-end gap-4 shrink-0">
+                            <Badge variant="outline" className="px-4 py-2 text-sm border-primary/20 bg-background/50 rounded-xl font-bold">
+                              <Calendar className="w-4 h-4 mr-2 text-primary" />
                               {exp.period}
                             </Badge>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => deleteExperience(exp.id)}>
-                              <Trash2 className="w-4 h-4" />
+                            <Button variant="ghost" size="icon" className="h-10 w-10 md:opacity-0 group-hover:opacity-100 transition-all rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => deleteExperience(exp.id)}>
+                              <Trash2 className="w-5 h-5" />
                             </Button>
                           </div>
                         </div>
+                        {idx !== portfolio.experience.length - 1 && <div className="mt-8 border-b border-primary/5 w-full" />}
                       </div>
                     ))
                   ) : (
-                    <div className="p-12 text-center border border-dashed rounded-2xl">
-                      <Briefcase className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
-                      <p className="text-muted-foreground">Record your career milestones.</p>
+                    <div className="p-16 text-center border-2 border-dashed border-primary/10 rounded-3xl bg-primary/5">
+                      <Briefcase className="w-12 h-12 text-primary/30 mx-auto mb-4" />
+                      <p className="text-muted-foreground font-medium">Record your professional milestones to showcase your expertise.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Projects */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-6">
-                  <CardTitle className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-orange-500/10">
-                      <Star className="w-5 h-5 text-orange-500" />
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-6 border-b border-primary/5">
+                  <CardTitle className="flex items-center gap-4 text-2xl">
+                    <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-500">
+                      <Star className="w-6 h-6" />
                     </div>
                     Flagship Projects
                   </CardTitle>
                   <AddProjectDialog onAdd={addProject} />
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-8 grid grid-cols-1 md:grid-cols-1 gap-6">
                   {portfolio?.projects && portfolio.projects.length > 0 ? (
                     portfolio.projects.map((project) => (
-                      <div key={project.id} className="group relative overflow-hidden rounded-2xl border hover:border-primary/50 transition-all p-5">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-3 flex-1">
-                            <div className="flex items-center gap-3">
-                              <h4 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors uppercase tracking-tight">{project.title}</h4>
-                              {project.featured && <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />}
-                            </div>
-                            <p className="text-muted-foreground text-sm leading-normal">{project.description}</p>
-                            <div className="flex flex-wrap gap-2">
-                              {project.technologies.map(t => (
-                                <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
-                              ))}
-                            </div>
-                          </div>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive" onClick={() => deleteProject(project.id)}>
-                            <Trash2 className="w-4 h-4" />
+                      <div key={project.id} className="group relative overflow-hidden rounded-3xl border border-primary/5 bg-background/30 hover:bg-background/60 hover:border-primary/30 transition-all duration-500 p-8 shadow-sm hover:shadow-2xl">
+                        <div className="absolute top-0 right-0 p-4">
+                          <Button variant="ghost" size="icon" className="h-10 w-10 opacity-0 group-hover:opacity-100 transition-all rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10" onClick={() => deleteProject(project.id)}>
+                            <Trash2 className="w-5 h-5" />
                           </Button>
+                        </div>
+                        <div className="space-y-5">
+                          <div className="flex items-center gap-4">
+                            <h4 className="text-3xl font-black text-foreground group-hover:text-primary transition-colors tracking-tight uppercase">{project.title}</h4>
+                            {project.featured && <Star className="w-6 h-6 text-yellow-500 fill-yellow-500 animate-pulse" />}
+                          </div>
+                          <p className="text-muted-foreground text-lg leading-relaxed max-w-3xl font-medium">{project.description}</p>
+                          <div className="flex flex-wrap gap-2.5">
+                            {project.technologies.map(t => (
+                              <Badge key={t} variant="secondary" className="text-xs px-4 py-1.5 rounded-full border-primary/10 bg-primary/10 text-primary font-bold">{t}</Badge>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="text-center py-12 border border-dashed rounded-2xl">
-                      <p className="text-muted-foreground">Add projects to showcase your work.</p>
+                    <div className="text-center py-16 border-2 border-dashed border-primary/10 rounded-3xl bg-primary/5">
+                      <p className="text-muted-foreground font-medium">Bring your projects to life. Add your best work here.</p>
                     </div>
                   )}
                 </CardContent>
@@ -321,96 +330,96 @@ const Portfolio = () => {
             </div>
 
             {/* Right Column */}
-            <div className="lg:col-span-1 space-y-6">
+            <div className="lg:col-span-1 space-y-8">
               {/* Skills */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest">
-                    <Code2 className="w-4 h-4 text-purple-500" /> Skills & Expertise
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-primary/5">
+                  <CardTitle className="text-sm font-black flex items-center gap-3 uppercase tracking-[0.2em] text-primary">
+                    <Code2 className="w-5 h-5 text-purple-500" /> Skills & Expertise
                   </CardTitle>
                   <AddSkillDialog onAdd={addSkill} />
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="pt-6 space-y-8">
                   {portfolio?.skills && portfolio.skills.length > 0 ? (
                     portfolio.skills.map((skillGroup) => (
-                      <div key={skillGroup.id} className="space-y-2.5 group p-2 rounded-lg hover:bg-muted/50 transition-all">
+                      <div key={skillGroup.id} className="space-y-4 group p-4 rounded-3xl border border-transparent hover:border-primary/5 hover:bg-primary/5 transition-all">
                         <div className="flex items-center justify-between">
-                          <h5 className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{skillGroup.category}</h5>
-                          <button onClick={() => deleteSkill(skillGroup.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity p-1">
-                            <X className="w-3 h-3" />
+                          <h5 className="text-[11px] font-black text-foreground/60 uppercase tracking-[0.25em]">{skillGroup.category}</h5>
+                          <button onClick={() => deleteSkill(skillGroup.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-2 rounded-xl hover:bg-destructive/10">
+                            <X className="w-3.5 h-3.5" />
                           </button>
                         </div>
-                        <div className="flex flex-wrap gap-1.5">
+                        <div className="flex flex-wrap gap-2.5">
                           {skillGroup.skills.map(s => (
-                            <Badge key={s} variant="secondary" className="text-[10px] px-2 py-0.5">{s}</Badge>
+                            <Badge key={s} variant="secondary" className="text-[11px] px-4 py-2 rounded-xl border-primary/5 bg-background shadow-sm hover:shadow-md transition-all font-bold">{s}</Badge>
                           ))}
                         </div>
                       </div>
                     ))
                   ) : (
-                    <div className="py-8 text-center border border-dashed rounded-xl">
-                      <p className="text-muted-foreground text-xs">No expertise areas defined yet.</p>
+                    <div className="py-12 text-center border-2 border-dashed border-primary/10 rounded-2xl bg-primary/5">
+                      <p className="text-muted-foreground text-sm font-medium">Define your technical arsenal.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Education */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest">
-                    <GraduationCap className="w-4 h-4 text-primary" /> Academic Path
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-primary/5">
+                  <CardTitle className="text-sm font-black flex items-center gap-3 uppercase tracking-[0.2em] text-primary">
+                    <GraduationCap className="w-5 h-5 text-primary" /> Academic Path
                   </CardTitle>
                   <AddEducationDialog onAdd={addEducation} />
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-6">
                   {portfolio?.education && portfolio.education.length > 0 ? (
                     portfolio.education.map(edu => (
-                      <div key={edu.id} className="relative group p-3 rounded-xl hover:bg-muted/50 transition-all">
-                        <div className="flex justify-between gap-2">
-                          <div className="space-y-1">
-                            <h5 className="text-foreground font-bold text-sm leading-tight">{edu.degree}</h5>
-                            <p className="text-muted-foreground text-xs font-medium">{edu.institution}</p>
-                            <p className="text-muted-foreground text-[10px] mt-1">{edu.period}</p>
+                      <div key={edu.id} className="relative group p-5 rounded-3xl border border-transparent hover:border-primary/5 hover:bg-primary/5 transition-all">
+                        <div className="flex justify-between gap-4">
+                          <div className="space-y-2">
+                            <h5 className="text-foreground font-black text-lg tracking-tight leading-tight">{edu.degree}</h5>
+                            <p className="text-primary font-bold text-sm tracking-wide">{edu.institution}</p>
+                            <Badge variant="outline" className="text-[10px] mt-2 border-primary/10 font-bold px-3 py-0.5 rounded-full">{edu.period}</Badge>
                           </div>
-                          <button onClick={() => deleteEducation(edu.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity">
-                            <X className="w-4 h-4" />
+                          <button onClick={() => deleteEducation(edu.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all h-10 w-10 flex items-center justify-center rounded-xl hover:bg-destructive/10 shrink-0">
+                            <X className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-xs text-center py-4">No records listed.</p>
+                    <p className="text-muted-foreground text-sm text-center py-10 font-medium">Documentation of academic excellence.</p>
                   )}
                 </CardContent>
               </Card>
 
               {/* Certifications */}
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-4">
-                  <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest">
-                    <BadgeCheck className="w-4 h-4 text-cyan-500" /> Verifications
+              <Card className="border-primary/10 bg-card/40 backdrop-blur-xl shadow-xl hover:border-primary/30 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-primary/5">
+                  <CardTitle className="text-sm font-black flex items-center gap-3 uppercase tracking-[0.2em] text-primary">
+                    <BadgeCheck className="w-5 h-5 text-cyan-500" /> Verifications
                   </CardTitle>
                   <AddCertificationDialog onAdd={addCertification} />
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="pt-6 space-y-4">
                   {portfolio?.certifications && portfolio.certifications.length > 0 ? (
                     portfolio.certifications.map(cert => (
-                      <div key={cert.id} className="group p-3 rounded-xl border hover:border-primary/50 transition-all flex justify-between items-center">
-                        <div className="space-y-0.5">
-                          <h5 className="text-foreground font-bold text-xs">{cert.name}</h5>
-                          <p className="text-muted-foreground text-[10px] uppercase font-medium">{cert.issuer}</p>
+                      <div key={cert.id} className="group p-5 rounded-3xl border border-primary/5 bg-background shadow-sm hover:border-primary/30 hover:shadow-lg transition-all flex justify-between items-center">
+                        <div className="space-y-1">
+                          <h5 className="text-foreground font-black text-sm tracking-tight">{cert.name}</h5>
+                          <p className="text-primary text-[11px] uppercase font-black tracking-widest">{cert.issuer}</p>
                         </div>
-                        <div className="flex items-center gap-2">
-                          {cert.credential_url && <a href={cert.credential_url} target="_blank" className="text-muted-foreground hover:text-foreground transition-colors"><ExternalLink className="w-3.5 h-3.5" /></a>}
-                          <button onClick={() => deleteCertification(cert.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all">
-                            <Trash2 className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-3">
+                          {cert.credential_url && <a href={cert.credential_url} target="_blank" className="text-muted-foreground hover:text-primary transition-all p-2 rounded-xl hover:bg-primary/10"><ExternalLink className="w-4 h-4" /></a>}
+                          <button onClick={() => deleteCertification(cert.id)} className="md:opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all p-2 rounded-xl hover:bg-destructive/10">
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
                     ))
                   ) : (
-                    <p className="text-muted-foreground text-xs text-center py-4">Awaiting valid certifications.</p>
+                    <p className="text-muted-foreground text-sm text-center py-10 font-medium">Awaiting valid certifications.</p>
                   )}
                 </CardContent>
               </Card>

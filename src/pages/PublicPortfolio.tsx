@@ -86,7 +86,7 @@ const PublicPortfolio = () => {
     ];
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
+        <div className="dark min-h-screen bg-slate-950 text-white selection:bg-primary/30">
             {/* Animated background blobs */}
             <div className="fixed inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute top-0 -left-4 w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-blob"></div>
@@ -161,7 +161,7 @@ const PublicPortfolio = () => {
                                     {/* Social Links */}
                                     <div className="flex flex-wrap gap-3 pt-2">
                                         {portfolio.github_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 bg-slate-800/40 border-slate-700 hover:bg-slate-700/60 text-white border-white/10" asChild>
                                                 <a href={portfolio.github_url} target="_blank" rel="noopener noreferrer">
                                                     <Github className="w-4 h-4" />
                                                     GitHub
@@ -169,7 +169,7 @@ const PublicPortfolio = () => {
                                             </Button>
                                         )}
                                         {portfolio.linkedin_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 bg-slate-800/40 border-slate-700 hover:bg-slate-700/60 text-white border-white/10" asChild>
                                                 <a href={portfolio.linkedin_url} target="_blank" rel="noopener noreferrer">
                                                     <Linkedin className="w-4 h-4" />
                                                     LinkedIn
@@ -177,7 +177,7 @@ const PublicPortfolio = () => {
                                             </Button>
                                         )}
                                         {portfolio.website_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 bg-slate-800/40 border-slate-700 hover:bg-slate-700/60 text-white border-white/10" asChild>
                                                 <a href={portfolio.website_url} target="_blank" rel="noopener noreferrer">
                                                     <Globe className="w-4 h-4" />
                                                     Website
@@ -217,7 +217,7 @@ const PublicPortfolio = () => {
                                     <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20">
                                         <Code2 className="w-6 h-6 text-blue-400" />
                                     </div>
-                                    <span className="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Skills & Technologies</span>
+                                    <span className="bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Skills & Expertise</span>
                                 </CardTitle>
                                 <CardDescription className="text-slate-400">Technical expertise and proficiencies</CardDescription>
                             </CardHeader>
