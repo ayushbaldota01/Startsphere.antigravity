@@ -216,7 +216,7 @@ export const Sidebar = () => {
               className="group-data-[collapsible=icon]:!p-0 group-data-[collapsible=icon]:justify-center h-14"
             >
               <NavLink to="/profile" activeClassName="bg-accent text-accent-foreground font-medium">
-                <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg shrink-0 shadow-lg shadow-primary/20">
+                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg shrink-0 shadow-lg shadow-primary/20">
                   {user?.name?.charAt(0).toUpperCase() || 'U'}
                 </div>
                 {!collapsed && (
