@@ -22,7 +22,7 @@ const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({
   children,
-  defaultTheme = "system",
+  defaultTheme = "dark",
   storageKey = "startsphere-ui-theme",
   ...props
 }: ThemeProviderProps) {

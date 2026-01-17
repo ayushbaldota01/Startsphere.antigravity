@@ -161,7 +161,7 @@ const PublicPortfolio = () => {
                                     {/* Social Links */}
                                     <div className="flex flex-wrap gap-3 pt-2">
                                         {portfolio.github_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
                                                 <a href={portfolio.github_url} target="_blank" rel="noopener noreferrer">
                                                     <Github className="w-4 h-4" />
                                                     GitHub
@@ -169,7 +169,7 @@ const PublicPortfolio = () => {
                                             </Button>
                                         )}
                                         {portfolio.linkedin_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
                                                 <a href={portfolio.linkedin_url} target="_blank" rel="noopener noreferrer">
                                                     <Linkedin className="w-4 h-4" />
                                                     LinkedIn
@@ -177,7 +177,7 @@ const PublicPortfolio = () => {
                                             </Button>
                                         )}
                                         {portfolio.website_url && (
-                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600" asChild>
+                                            <Button variant="outline" size="sm" className="gap-2 border-slate-700 hover:bg-slate-800 hover:border-slate-600 text-slate-950 hover:text-white" asChild>
                                                 <a href={portfolio.website_url} target="_blank" rel="noopener noreferrer">
                                                     <Globe className="w-4 h-4" />
                                                     Website

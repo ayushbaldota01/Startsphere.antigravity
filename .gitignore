@@ -2,6 +2,8 @@ node_modules/
 .env
 .env.local
 .env.production
+.env.development
+.env*.local
 dist/
 .DS_Store
 *.log
@@ -14,3 +16,20 @@ dist/
 .cache/
 coverage/
 build/
+
+# Security - Never commit these
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+.secrets
+*.secret
+
+# Debug files
+debug-*.ts
+*.debug.ts
+
+# Local development
+.local/
+*.local.ts

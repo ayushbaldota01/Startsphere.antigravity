@@ -2,7 +2,8 @@ import { ProjectReport } from '@/hooks/useProjectReport';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { FileText, Users, GraduationCap, Calendar, Zap, Target, BookOpen, Layers, CheckCircle } from 'lucide-react';
-import { forwardRef } from 'react';
+import { forwardRef, useMemo } from 'react';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 interface ReportPreviewProps {
   report: ProjectReport;
@@ -181,7 +182,7 @@ export const ReportPreview = forwardRef<HTMLDivElement, ReportPreviewProps>(
                 <span className="text-indigo-600">{String(7 + index).padStart(2, '0')}.</span> {section.title}
               </h2>
               <div className="text-lg text-slate-600 leading-8 prose prose-slate max-w-none" style={{ pageBreakInside: 'auto' }}>
-                <div dangerouslySetInnerHTML={{ __html: section.content }} />
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(section.content) }} />
               </div>
             </section>
           ))}
